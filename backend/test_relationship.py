@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, inspect
 
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///.circle_share.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///circle_share.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 
 Base.metadata.create_all(bind=engine)

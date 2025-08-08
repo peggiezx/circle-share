@@ -48,8 +48,19 @@ class CircleResponse(BaseModel):
     name: str
     creator_id: int
     member_count: Optional[int] = 0
+    
+    class Config:
+        from_attributes = True 
+
 
 class MyCirclesResponse(BaseModel):
-    created_circles=[...] # Circles you created
-    member_circles=[...] # Circles you're a member of
+    created_circles: list[CircleResponse] # Circles you created
+    member_circles: list[CircleResponse] # Circles you're a member of
+
+
+class Invitee(BaseModel):
+    email: EmailStr
     
+class InviteeResponse(BaseModel):
+    circle_joined: str
+    circle_owner: str

@@ -11,8 +11,8 @@ from sqlalchemy.orm import Session
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
-# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-oauth2_scheme = HTTPBearer()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+# oauth2_scheme = HTTPBearer()
 
 SECRET_KEY = config("SECRET_KEY")
 ALGORITHM = config("ALGORITHM", default="HS256")
@@ -44,18 +44,18 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Se
     )
     
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=ALGORITHM)
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = payload.get("sub")
         if email is None:
             raise credentials_exception
     except JWTError:
         raise credentials_exception
     
-    from database import SessionLocal
-    from models import User
+    from .database import SessionLocal
+    from .models import User
     
     user = db.query(User).filter(User.email == email).first()
-    db.close()
+    # db.close()
     
     if user is None:
         raise credentials_exception
