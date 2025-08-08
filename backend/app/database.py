@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 
 Base = declarative_base()
-engine = create_engine('sqlite:///family_journal.db')
+engine = create_engine('sqlite:///circle_share.db')
 
 SessionLocal = sessionmaker(bind=engine)
 
