@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from .database import get_db, engine, Base
 from .schemas import JournalEntry, UserCreate, UserLogin, CircleCreate, CircleResponse, MyCirclesResponse, Invitee, InviteeResponse
 from .models import User, Circle, CircleMember
-from .auth import hash_password, verify_password, create_user_token, get_current_user, SECRET_KEY, ACCESS_TOKEN_MINUTES
+from .auth.custom_auth import hash_password, verify_password, create_user_token, get_current_user, SECRET_KEY, ACCESS_TOKEN_MINUTES
 from datetime import datetime, timedelta
 from .exceptions import CircleNotFound, UserAlreadyJoined, UserNotFound, InvalidCredentials, EmailAlreadyExists, AccessDenied
 from .error_handlers import access_denied_handler, circle_not_found_handler, user_already_joined_handler, user_not_found_handler, email_already_registered_handler, invalid_credentials_handler

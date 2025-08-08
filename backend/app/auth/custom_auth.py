@@ -5,9 +5,9 @@ from decouple import config
 from jose import JWTError, jwt
 from fastapi.security import OAuth2PasswordBearer, HTTPBearer
 from fastapi import Depends, HTTPException, status
-from .database import get_db
+from ..database import get_db, SessionLocal
 from sqlalchemy.orm import Session
-
+from ..models import User
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
@@ -51,8 +51,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)], db: Se
     except JWTError:
         raise credentials_exception
     
-    from .database import SessionLocal
-    from .models import User
+   
     
     user = db.query(User).filter(User.email == email).first()
     # db.close()
