@@ -61,6 +61,10 @@ class MyCirclesResponse(BaseModel):
 class Invitee(BaseModel):
     email: EmailStr
     
+    
 class InviteeResponse(BaseModel):
     circle_joined: str
     circle_owner: str
+
+class MemberToRemove(BaseModel):
+    email: EmailStr

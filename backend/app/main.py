@@ -1,12 +1,12 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from .database import get_db, engine, Base
-from .schemas import JournalEntry, UserCreate, UserLogin, CircleCreate, CircleResponse, MyCirclesResponse, Invitee, InviteeResponse
+from .schemas import JournalEntry, MemberToRemove, UserCreate, UserLogin, CircleCreate, CircleResponse, MyCirclesResponse, Invitee, InviteeResponse
 from .models import User, Circle, CircleMember
 from .auth.custom_auth import hash_password, verify_password, create_user_token, get_current_user, SECRET_KEY, ACCESS_TOKEN_MINUTES
 from datetime import datetime, timedelta
-from .exceptions import CircleNotFound, UserAlreadyJoined, UserNotFound, InvalidCredentials, EmailAlreadyExists, AccessDenied
-from .error_handlers import access_denied_handler, circle_not_found_handler, user_already_joined_handler, user_not_found_handler, email_already_registered_handler, invalid_credentials_handler
+from .exceptions import CircleNotFound, UserAlreadyJoined, UserNotFound, InvalidCredentials, EmailAlreadyExists, AccessDenied, UserNotInCircle
+from .error_handlers import access_denied_handler, circle_not_found_handler, user_already_joined_handler, user_not_found_handler, email_already_registered_handler, invalid_credentials_handler, user_not_in_circle_handler
 
 Base.metadata.create_all(bind=engine)
 
@@ -18,6 +18,7 @@ app.add_exception_handler(InvalidCredentials, invalid_credentials_handler)
 app.add_exception_handler(CircleNotFound, circle_not_found_handler)
 app.add_exception_handler(AccessDenied, access_denied_handler)
 app.add_exception_handler(UserAlreadyJoined, user_already_joined_handler)
+app.add_exception_handler(UserNotInCircle, user_not_in_circle_handler)
 
 session = Session()
 
@@ -205,6 +206,42 @@ async def leave_circle(
     db.commit()
     return {"message": f"You have left '{circle.name}'"}
 
+
+@app.delete("/circles/{circle_id}/remove")
+async def remove_member(
+    circle_id: int,
+    member_data: MemberToRemove,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    circle = db.get(Circle, circle_id)
+    if not circle:
+        raise CircleNotFound()
+    
+    if circle.creator_id != current_user.id:
+        raise AccessDenied()
+    
+    member_to_delete = db.query(User).filter(User.email == member_data.email).first()
+    if not member_to_delete:
+        raise UserNotFound()
+    
+    if member_to_delete not in circle.members:
+        raise UserNotInCircle()
+    
+    if member_to_delete.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot remove yourself from the circle")
+
+    member_to_delete_name = member_to_delete.name
+
+    try:
+        circle.members.remove(member_to_delete)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to remove member from circle")
+    
+    return {"message": f"You have removed {member_to_delete_name} from your circle."}
+        
 
 @app.get("/users")
 async def get_all_users(db: Session = Depends(get_db)):

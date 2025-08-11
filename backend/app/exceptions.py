@@ -43,3 +43,7 @@ class AccountDeactivated(HTTPException):
     def __init__(self):
         super().__init__(status_code=403, detail="Account has been deactivated")
         
+class UserNotInCircle(HTTPException):
+    def __init__(self):
+        super().__init__(status_code=400, detail="User is not a member of this circle")
+        

@@ -1,6 +1,6 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from .exceptions import AccessDenied, CircleNotFound, UserAlreadyJoined, UserNotFound, EmailAlreadyExists, InvalidCredentials
+from .exceptions import AccessDenied, CircleNotFound, UserAlreadyJoined, UserNotFound, EmailAlreadyExists, InvalidCredentials, UserNotInCircle
 from .schemas import ErrorDetail
 from datetime import datetime
 
@@ -71,4 +71,10 @@ async def invalid_credentials_handler(request: Request, exc: InvalidCredentials)
             status_code=exc.status_code,
             content= error_detail.model_dump(mode='json')
     )
-    
+
+
+async def user_not_in_circle_handler(requests: Request, exc: UserNotInCircle):
+    error_detail = ErrorDetail(
+        type="user_not_in_circle",
+        message=exc.detail
+    )

@@ -15,7 +15,9 @@ def test_circleshare_e2e():
     users = [
         {"name": "Alice", "email": "alice@test.com", "password": "password123"},
         {"name": "Bob", "email": "bob@test.com", "password": "password123"},
-        {"name": "Charlie", "email": "charlie@test.com", "password": "password123"}
+        {"name": "Charlie", "email": "charlie@test.com", "password": "password123"},
+        {"name": "Ebby", "email": "ebby@test.com", "password": "password123"}
+
     ]
     
     for user in users:
@@ -83,6 +85,19 @@ def test_circleshare_e2e():
     else:
         print(f"❌ Invitation failed: {response.json()}")
     
+    
+    print("\n📨 Step 4: Alice invites Ebby to her circle...")
+    
+    invite_data = {"email": "ebby@test.com"}
+    response = requests.post(f"{BASE_URL}/circles/{circle_id}/invite", 
+                           json=invite_data, headers=headers)
+    
+    if response.status_code == 200:
+        result = response.json()
+        print(f"✅ Ebby invited successfully: {result['circle_joined']}")
+    else:
+        print(f"❌ Invitation failed: {response.json()}")
+    
     # Step 5: Test authorization - Bob tries to invite Charlie (should fail)
     print("\n🚫 Step 5: Testing authorization - Bob tries to invite Charlie...")
     
@@ -133,6 +148,23 @@ def test_circleshare_e2e():
     else:
         print(f"❌ Bob leave failed: {response.json()}")
     
+    # Step 8: Alice removes Ebby from the circle
+    print("\n👋 Step 8: Alice removes Ebby...")
+    
+    alice_headers = {"Authorization": f"Bearer {tokens['Alice']}"}
+    
+    member_to_remove = {
+        "email": "ebby@test.com"
+    }
+    
+    response = requests.delete(f"{BASE_URL}/circles/{circle_id}/remove", headers=alice_headers, json=member_to_remove)
+    
+    if response.status_code == 200:
+        result = response.json()
+        print(f"✅ Ebby Removed: {result['message']}")
+    else:
+        print(f"❌ Ebby removal failed: {response.json()}")
+    
     # Step 9: Alice leaves her own circle (should delete it)
     print("\n💥 Step 9: Alice leaves her own circle (should delete entire circle)...")
     
@@ -153,6 +185,18 @@ def test_circleshare_e2e():
         circles = response.json()
         total_circles = len(circles["created_circles"]) + len(circles["member_circles"])
         print(f"✅ Alice now has {total_circles} circles (should be 0)")
+    
+    
+    # Step 11: Bob leaves the circle
+    print("\n👋 Step 8: Bob leaves Alice's circle...")
+    
+    response = requests.delete(f"{BASE_URL}/circles/{circle_id}/leave", headers=bob_headers)
+    
+    if response.status_code == 200:
+        result = response.json()
+        print(f"✅ Bob left: {result['message']}")
+    else:
+        print(f"❌ Bob leave failed: {response.json()}")
     
     print("\n🎉 End-to-End Test Complete!")
 
