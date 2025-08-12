@@ -7,6 +7,7 @@ from .auth.custom_auth import hash_password, verify_password, create_user_token,
 from datetime import datetime, timedelta
 from .exceptions import CircleNotFound, UserAlreadyJoined, UserNotFound, InvalidCredentials, EmailAlreadyExists, AccessDenied, UserNotInCircle
 from .error_handlers import access_denied_handler, circle_not_found_handler, user_already_joined_handler, user_not_found_handler, email_already_registered_handler, invalid_credentials_handler, user_not_in_circle_handler
+from .auth.oso_patterns.policy_engine import policy_engine
 
 Base.metadata.create_all(bind=engine)
 
@@ -154,6 +155,13 @@ async def invite_user_to_circle(
     if curr_circle.creator_id != current_user.id:
         raise AccessDenied()
     
+    # NEW Oso-inpsired auth
+    try:
+        policy_engine.require_authorization(current_user, "invite_members", curr_circle)
+        print(" Both systems agreed: ALLOW")
+    except AccessDenied:
+        print(" Disagreement: Current = ALLOW, Oso = DENY")
+    
     invitee_user = db.query(User).filter(User.email == invitee_data.email).first()
     if not invitee_user:
         raise UserNotFound()
@@ -176,9 +184,7 @@ async def leave_circle(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    print(f"=== LEAVE CIRCLE DEBUG ===")
-    print(f"Circle ID: {circle_id}")
-    print(f"Current user: {current_user.name} (ID: {current_user.id})")
+\
     
     circle = db.get(Circle, circle_id)
     if not circle:
@@ -186,25 +192,41 @@ async def leave_circle(
     
     print(f"Circle: {circle.name} (creator ID: {circle.creator_id})")
     print(f"Creator check: {circle.creator_id} == {current_user.id} = {circle.creator_id == current_user.id}")
-    
+        
     circle = db.get(Circle, circle_id)
     print(f"Found the circle and it's own by {circle.creator_id}, and the current user id is {current_user.id}")
     if not circle:
         raise CircleNotFound()
     
+    # New Oso implementation
+    
+    
     if circle.creator_id == current_user.id:
         print(f"confirming the circle is owned by current user {current_user.id}")
+        try:
+            policy_engine.require_authorization(current_user, "leave_circle", circle)
+            print(" Both systems agreed: ALLOW(delete)")
+        except AccessDenied:
+            print(" Disagreement: Current = ALLOW, Oso = DENY")
+            
         circle_name = circle.name
         db.delete(circle)
         db.commit()
         return {"message": f'{circle_name} has been deleted'}
     
-    if current_user not in circle.members:
-        raise AccessDenied()
+    else:
+        try:
+            policy_engine.require_authorization(current_user, "leave_circle", circle)
+            print(" Both systems agreed: ALLOW(leave)")
+        except AccessDenied:
+            print(" Disagreement: Current = ALLOW, Oso = DENY")
+        
+        if current_user not in circle.members:
+            raise AccessDenied()
 
-    circle.members.remove(current_user)
-    db.commit()
-    return {"message": f"You have left '{circle.name}'"}
+        circle.members.remove(current_user)
+        db.commit()
+        return {"message": f"You have left '{circle.name}'"}
 
 
 @app.delete("/circles/{circle_id}/remove")
