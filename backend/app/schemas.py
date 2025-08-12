@@ -2,11 +2,6 @@ from pydantic import BaseModel, EmailStr, field_validator, Field, ConfigDict
 from typing import Optional
 from datetime import datetime, date
 
-class JournalEntry(BaseModel):
-    title: str
-    date: datetime = Field(default_factory=datetime.now)
-    content: str = "Write down something going on about your life"
-
 class UserCreate(BaseModel):
     name: str
     email: EmailStr
@@ -66,5 +61,20 @@ class InviteeResponse(BaseModel):
     circle_joined: str
     circle_owner: str
 
+
 class MemberToRemove(BaseModel):
     email: EmailStr
+
+
+# Post related
+class PostBase(BaseModel):
+    circle_id: int
+    content: str = "Write down something going on about your life"
+
+class PostResponse(BaseModel):
+    post_id: int
+    circle_id: int
+    author_id: int
+    content: str
+    create_at: datetime
+    author_name: str

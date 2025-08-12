@@ -17,6 +17,7 @@ class User(Base):
     created_circles = relationship("Circle", back_populates="creator")
     # connects the Circle class with the association class Circle Member, when it's associated, the circle.members wil be associated to users
     circles = relationship("Circle", secondary="circle_members", back_populates="members")
+    posts = relationship("Post", back_populates="author")
     
     
     
@@ -28,6 +29,7 @@ class Circle(Base):
     
     creator = relationship("User", back_populates='created_circles')
     members = relationship("User", secondary="circle_members", back_populates="circles")
+    posts = relationship("Post", back_populates="circle")
 
 
 class CircleMember(Base):
@@ -36,3 +38,16 @@ class CircleMember(Base):
     user_id = Column(Integer, ForeignKey('users.id'), primary_key=True)
     circle_id = Column(Integer, ForeignKey('circles.id'), primary_key=True)
     joined_at = Column(DateTime, default=datetime.now(timezone.utc))
+
+
+class Post(Base):
+    __tablename__ = "posts"
+    
+    post_id = Column(Integer, primary_key=True, index=True)
+    circle_id = Column(Integer, ForeignKey('circles.id'))
+    author_id = Column(Integer, ForeignKey('users.id'))
+    content = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    author = relationship("User", back_populates="posts")
+    circle = relationship("Circle", back_populates="posts")
