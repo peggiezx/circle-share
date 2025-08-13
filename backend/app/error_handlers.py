@@ -1,6 +1,6 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from .exceptions import AccessDenied, CircleNotFound, UserAlreadyJoined, UserNotFound, EmailAlreadyExists, InvalidCredentials, UserNotInCircle
+from .exceptions import AccessDenied, CircleNotFound, PostNotFound, UserAlreadyJoined, UserNotFound, EmailAlreadyExists, InvalidCredentials, UserNotInCircle
 from .schemas import ErrorDetail
 from datetime import datetime
 
@@ -25,6 +25,18 @@ async def circle_not_found_handler(request: Request, exc: CircleNotFound):
         status_code=exc.status_code,
         content=error_detail.model_dump(mode='json')
     )
+
+async def post_not_found_handler(request: Request, exc: PostNotFound):
+    error_detail = ErrorDetail(
+        type="post_not_found",
+        message=exc.detail      
+    )
+    
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_detail.model_dump(mode='json')
+    )
+
     
 async def access_denied_handler(request: Request, exc: AccessDenied):
     error_detail = ErrorDetail(
