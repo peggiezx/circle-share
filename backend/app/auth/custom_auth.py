@@ -11,7 +11,7 @@ from ..models import User
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # oauth2_scheme = HTTPBearer()
 
 SECRET_KEY = config("SECRET_KEY")
