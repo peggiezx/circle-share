@@ -1,12 +1,13 @@
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from .database import get_db, engine, Base
-from .schemas import JournalEntry, MemberToRemove, UserCreate, UserLogin, CircleCreate, CircleResponse, MyCirclesResponse, Invitee, InviteeResponse
-from .models import User, Circle, CircleMember
+from .schemas import MemberToRemove, PostBase, PostResponse, UserCreate, UserLogin, CircleCreate, CircleResponse, MyCirclesResponse, Invitee, InviteeResponse
+from .models import Post, User, Circle, CircleMember
 from .auth.custom_auth import hash_password, verify_password, create_user_token, get_current_user, SECRET_KEY, ACCESS_TOKEN_MINUTES
 from datetime import datetime, timedelta
-from .exceptions import CircleNotFound, UserAlreadyJoined, UserNotFound, InvalidCredentials, EmailAlreadyExists, AccessDenied, UserNotInCircle
-from .error_handlers import access_denied_handler, circle_not_found_handler, user_already_joined_handler, user_not_found_handler, email_already_registered_handler, invalid_credentials_handler, user_not_in_circle_handler
+from .exceptions import CircleNotFound, PostNotFound, UserAlreadyJoined, UserNotFound, InvalidCredentials, EmailAlreadyExists, AccessDenied, UserNotInCircle
+from .error_handlers import access_denied_handler, circle_not_found_handler, post_not_found_handler, user_already_joined_handler, user_not_found_handler, email_already_registered_handler, invalid_credentials_handler, user_not_in_circle_handler
 from .auth.oso_patterns.policy_engine import policy_engine
 
 Base.metadata.create_all(bind=engine)
@@ -20,6 +21,8 @@ app.add_exception_handler(CircleNotFound, circle_not_found_handler)
 app.add_exception_handler(AccessDenied, access_denied_handler)
 app.add_exception_handler(UserAlreadyJoined, user_already_joined_handler)
 app.add_exception_handler(UserNotInCircle, user_not_in_circle_handler)
+app.add_exception_handler(PostNotFound, post_not_found_handler)
+
 
 session = Session()
 
@@ -27,17 +30,6 @@ session = Session()
 @app.get("/")
 async def root():
     return {"message": "Hello World"}
-
-@app.post("/create-entry")
-async def create_journal_entry(entry: JournalEntry):
-    return {
-        "message": "Journal entry created!",
-        "entry": {
-            "title": entry.title,
-            "date": entry.date,
-            "content": entry.content,
-        }
-    }
 
 
 # user registration endpoint
@@ -92,6 +84,35 @@ async def login_user(credentials: UserLogin, db: Session = Depends(get_db)):
     raise InvalidCredentials()
 
 
+@app.post("/token")
+async def token_for_docs(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    # Reuse your existing login logic, but with OAuth2 form format
+    user_info = db.query(User).filter(User.email == form_data.username).first()
+    
+    if not user_info:
+        raise UserNotFound()
+    
+    if verify_password(form_data.password, user_info.hashed_password):
+        data = {
+            "sub": user_info.email, 
+            "name": user_info.name, 
+            "id": user_info.id
+        }
+        
+        access_token_expires = timedelta(minutes=ACCESS_TOKEN_MINUTES)
+        access_token = create_user_token(data, access_token_expires)
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer"
+        }
+
+    raise InvalidCredentials()
+
+
 @app.get("/profile")
 async def get_user_profile(current_user: User = Depends(get_current_user)):
     return {
@@ -115,17 +136,19 @@ async def create_circle(
     db.add(new_circle)
     db.commit()
     db.refresh(new_circle)
-    
+    print(f"New circle ID after refresh: {new_circle.id}")  # Debug
+
     new_circle.members.append(creator)
     db.commit()
     
-    
-    return CircleResponse(
+    response = CircleResponse(
         id=new_circle.id,
         name=new_circle.name,
         creator_id=new_circle.creator_id,
         member_count=len(new_circle.members)
     )
+    print(f"Response object: {response}")
+    return response
 
 @app.get("/circles/my", response_model=MyCirclesResponse)
 async def view_circle_members(
@@ -263,8 +286,140 @@ async def remove_member(
         raise HTTPException(status_code=500, detail="Failed to remove member from circle")
     
     return {"message": f"You have removed {member_to_delete_name} from your circle."}
-        
 
+
+@app.post("/posts/", response_model=PostResponse)
+async def create_post(
+    post_data: PostBase,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    
+    circle = db.query(Circle).filter(Circle.id == post_data.circle_id).first()
+    if not circle:
+        raise CircleNotFound()
+    
+    if circle.creator_id != current_user.id:
+        raise AccessDenied()
+    
+    new_post = Post(
+        circle_id=post_data.circle_id,
+        author_id=current_user.id,
+        content=post_data.content,
+        created_at=datetime.now()
+    )
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
+    
+    return PostResponse(
+        post_id=new_post.post_id,
+        circle_id=new_post.circle_id,
+        author_id=new_post.author_id,
+        content=new_post.content,
+        create_at=new_post.created_at,
+        author_name=current_user.name
+    )
+    
+    
+@app.get("/my-circle/posts", response_model=list[PostResponse])
+async def get_my_circle_posts(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    res = []
+    for post in current_user.posts:
+        post_response = PostResponse(
+            post_id=post.post_id,
+            circle_id=post.circle_id,
+            author_id=current_user.id,
+            content=post.content,
+            created_at=post.created_at,
+            author_name=current_user.name
+        )
+        res.append(post_response)
+    
+    return res
+
+
+@app.get("/circles/{circle_id}/posts", response_model=list[PostResponse])
+async def get_circle_posts(
+    circle_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    circle = db.query(Circle).filter(Circle.id == circle_id).first()
+    if not circle:
+        raise CircleNotFound()
+    
+    if current_user not in circle.members:
+        raise AccessDenied()
+    
+    res = []
+    for post in circle.posts:
+        post_response = PostResponse(
+            post_id=post.post_id,
+            circle_id=post.circle_id,
+            author_id=post.author.id,
+            content=post.content,
+            created_at=post.created_at,
+            author_name=post.author.name,
+        )
+        res.append(post_response)
+                
+    return res
+     
+@app.get("/timeline", response_model=list[PostResponse])
+async def get_timeline(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    user_circles = current_user.circles
+    
+    all_posts = []
+    for circle in user_circles:
+        for p in circle.posts:
+            all_posts.append(p)  
+    
+    all_posts.sort(key=lambda post: post.created_at, reverse=True)
+    
+    return [
+        PostResponse(
+                post_id=p.post_id,
+                circle_id=p.circle_id,
+                author_id=p.author_id,
+                content=p.content,
+                created_at=p.created_at,
+                author_name=p.author.name
+            )
+        for p in all_posts
+    ]
+
+
+@app.delete("/posts/{post_id}")
+async def delete_post(
+    post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db) 
+):
+    post_to_delete = db.query(Post).filter(Post.post_id == post_id).first()
+    if not post_to_delete:
+        raise PostNotFound()
+    
+    can_delete = (
+        post_to_delete.author_id == current_user.id or
+        post_to_delete.circle.creator_id == current_user.id
+    )
+    
+    if not can_delete:
+        raise AccessDenied()
+    
+    db.delete(post_to_delete)
+    db.commit()
+    
+    return {"message": f"Your post created at {post_to_delete.created_at} was deleted"}
+
+    
 @app.get("/users")
 async def get_all_users(db: Session = Depends(get_db)):
     users = db.query(User).all()
