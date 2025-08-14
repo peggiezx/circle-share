@@ -9,10 +9,19 @@ from datetime import datetime, timedelta
 from .exceptions import CircleNotFound, PostNotFound, UserAlreadyJoined, UserNotFound, InvalidCredentials, EmailAlreadyExists, AccessDenied, UserNotInCircle
 from .error_handlers import access_denied_handler, circle_not_found_handler, post_not_found_handler, user_already_joined_handler, user_not_found_handler, email_already_registered_handler, invalid_credentials_handler, user_not_in_circle_handler
 from .auth.oso_patterns.policy_engine import policy_engine
+from fastapi.middleware.cors import CORSMiddleware
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.add_exception_handler(EmailAlreadyExists, email_already_registered_handler)
 app.add_exception_handler(UserNotFound, user_not_found_handler)
@@ -317,7 +326,7 @@ async def create_post(
         circle_id=new_post.circle_id,
         author_id=new_post.author_id,
         content=new_post.content,
-        create_at=new_post.created_at,
+        created_at=new_post.created_at,
         author_name=current_user.name
     )
     

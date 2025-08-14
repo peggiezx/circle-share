@@ -76,5 +76,5 @@ class PostResponse(BaseModel):
     circle_id: int
     author_id: int
     content: str
-    create_at: datetime
+    created_at: datetime
     author_name: str
