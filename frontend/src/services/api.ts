@@ -1,4 +1,3 @@
-import { error } from "console";
 import type { LoginResponse, Post } from "../types";
 
 export async function loginWithToken(
@@ -16,7 +15,6 @@ export async function loginWithToken(
   }
 
   const data: LoginResponse = await res.json();
-
   return data;
 }
 
