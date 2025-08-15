@@ -12,3 +12,8 @@ export interface Post {
   created_at: string;
   author_name: string;
 }
+
+export interface Token {
+    access_token: string;
+    token_type: string;
+}
