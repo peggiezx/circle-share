@@ -1,8 +1,8 @@
-import { Timeline, type TimelineRef } from "./componets/Timeline";
-import { Login } from "./componets/Login";
+import { Timeline, type TimelineRef } from "./components/Timeline";
+import { Login } from "./components/Login";
 import { useEffect, useRef, useState } from "react";
 import { clearStoredToken, getStoredToken } from "./services/api";
-import { PostCreationForm } from "./componets/PostCreationForm";
+import { PostCreationForm } from "./components/PostCreationForm";
 
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
