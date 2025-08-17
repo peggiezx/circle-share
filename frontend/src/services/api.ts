@@ -64,17 +64,17 @@ export async function createPost(content: string, circle_id: number): Promise<Po
     console.log("Token:", token);
 
     const res = await fetch("http://127.0.0.1:8000/posts/", {
-    method: "POST",
-    headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-        content: content,
-        circle_id: circle_id,
-    }),
+        method: "POST",
+        headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+            content: content,
+            circle_id: circle_id,
+        }),
     });
-    
+
     console.log("Response status:", res.status); // Debug log
 
     if (!res.ok) {
@@ -85,3 +85,23 @@ export async function createPost(content: string, circle_id: number): Promise<Po
     return post_data;
 }
 
+export async function deletePost(postId: number): Promise<void> {
+    const token = getStoredToken();
+    if (!token) {
+        throw new Error("No auth token found");
+    }
+
+    const res = await fetch(`http://127.0.0.1:8000/posts/${postId}`, {
+        method: "DELETE",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+
+    if (!res.ok) {
+        throw new Error('Failed to delete post');
+    }
+
+
+
+}
