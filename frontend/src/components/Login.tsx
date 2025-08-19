@@ -3,9 +3,10 @@ import { loginAndStoreToken } from "../services/api";
 
 interface LoginProps {
   onLoginSuccess: () => void;
+  onLoginError?:() => void;
 }
 
-export function Login({onLoginSuccess}: LoginProps) {
+export function Login({onLoginSuccess, onLoginError}: LoginProps) {
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const [error, setError] = useState<string | null>(null);
@@ -18,7 +19,16 @@ export function Login({onLoginSuccess}: LoginProps) {
             await loginAndStoreToken(email, password);
             onLoginSuccess();
         } catch (err) {
-            setError("Login failed");
+            const errorMessage = (err as Error).message;
+
+            if (errorMessage === "USER_NOT_FOUND") {
+                setError("Account not found");
+                onLoginError?.();
+            } else if (errorMessage === "INVALID_CREDENTIALS") {
+                setError("Invalid password");
+            } else {
+                setError("Login failed");
+            }
         }
         setLoading(false);
     };
