@@ -1,8 +1,8 @@
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from .database import get_db, engine, Base
-from .schemas import MemberToRemove, PostBase, PostResponse, UserCreate, UserLogin, CircleCreate, CircleResponse, MyCirclesResponse, Invitee, InviteeResponse
+from .schemas import CirclesJoinedResponse, MemberToRemove, PostBase, PostResponse, UserCreate, UserLogin, CircleCreate, CircleResponse, MyCircleResponse, Invitee, InviteeResponse, UserResponse
 from .models import Post, User, Circle, CircleMember
 from .auth.custom_auth import hash_password, verify_password, create_user_token, get_current_user, SECRET_KEY, ACCESS_TOKEN_MINUTES
 from datetime import datetime, timedelta
@@ -54,11 +54,23 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         first_access=datetime.now()
     )
     
-    
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
-    return {"message": "Account created successfully!", "user_id":new_user.id}
+    
+    new_circle = Circle(
+        name = "My days",
+        creator_id = new_user.id,        
+    )
+    
+    db.add(new_circle)
+    db.commit()
+    db.refresh(new_circle)
+    
+    new_circle.members.append(new_user)
+    db.commit()
+
+    return {"message": "Account created successfully!", "user_id":new_user.id, "circle_id": new_circle.id}
 
 
 # user authentication and authorization
@@ -159,15 +171,132 @@ async def create_circle(
     print(f"Response object: {response}")
     return response
 
-@app.get("/circles/my", response_model=MyCirclesResponse)
-async def view_circle_members(
+@app.get("/my-circle", response_model=MyCircleResponse)
+async def get_my_circle(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    my_circle = db.query(Circle).filter(Circle.creator_id == current_user.id).first()
+    if not my_circle:
+        raise CircleNotFound()
+    
+    return MyCircleResponse(
+        id=my_circle.id,
+        name=my_circle.name,
+        member_count=len(my_circle.memebers)
+    )
+
+
+@app.post("/my-circle/invite", response_model=InviteeResponse)
+async def invite_user_to_circle(
+    invitee_data: Invitee,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    
+):
+    curr_circle = db.query(Circle).filter(Circle.creator_id == current_user.id).first()
+    if not curr_circle:
+        raise CircleNotFound()
+    
+    if curr_circle.creator_id != current_user.id:
+        raise AccessDenied()
+    
+    # NEW Oso-inpsired auth
+    try:
+        policy_engine.require_authorization(current_user, "invite_members", curr_circle)
+        print(" Both systems agreed: ALLOW")
+    except AccessDenied:
+        print(" Disagreement: Current = ALLOW, Oso = DENY")
+    
+    invitee_user = db.query(User).filter(User.email == invitee_data.email).first()
+    if not invitee_user:
+        raise UserNotFound()
+    
+    if invitee_user in curr_circle.members:
+        raise UserAlreadyJoined()
+    
+    curr_circle.members.append(invitee_user)
+    db.commit()
+    
+    return InviteeResponse(
+        circle_joined=curr_circle.name,
+        circle_owner=current_user.name
+    )
+
+@app.get("/my-circle/posts", response_model=list[PostResponse])
+async def get_my_circle_posts(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    res = []
+    for post in current_user.posts:
+        post_response = PostResponse(
+            post_id=post.post_id,
+            circle_id=post.circle_id,
+            author_id=current_user.id,
+            content=post.content,
+            created_at=post.created_at,
+            author_name=current_user.name
+        )
+        res.append(post_response)
+    
+    return res
+
+
+@app.get("/my-circle/members", response_model=list[UserResponse])
+async def get_my_circle_members(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    circle = db.query(Circle).options(joinedload(Circle.members)).filter(Circle.creator_id == current_user.id).first()
+    
+    return circle.members
+
+
+@app.delete("/my-circle/members/{member_id}")
+async def remove_member(
+    member_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    print(f"Attempting to remove member {member_id} for user {current_user.id}")  # Debug
+
+    circle = db.query(Circle).filter(Circle.creator_id == current_user.id).first()
+    if not circle:
+        raise CircleNotFound()
+    
+    if circle.creator_id != current_user.id:
+        raise AccessDenied()
+    
+    if member_id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot remove yourself")
+    
+    member_to_remove = db.query(User).filter(User.id == member_id).first()
+    if not member_to_remove:
+        raise UserNotFound()
+    
+    if member_to_remove not in circle.members:
+        raise UserNotInCircle()
+    
+    member_to_remove_name = member_to_remove.name
+
+    try:
+        circle.members.remove(member_to_remove)
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Failed to remove member from circle")
+    
+    return {"message": f"You have removed {member_to_remove_name} from your circle."}
+
+
+@app.get("/circles/joined", response_model=CirclesJoinedResponse)
+async def get_joined_circles(
     current_user: User = Depends(get_current_user), 
     db: Session = Depends(get_db)
     ):
-    my_circle = db.query(Circle).filter(Circle.creator_id == current_user.id).all()
     members_circles = [circle for circle in current_user.circles if circle.creator_id != current_user.id]
-    return MyCirclesResponse(
-        created_circles=my_circle,
+    return CirclesJoinedResponse(
         member_circles=members_circles
     )
 
@@ -304,7 +433,7 @@ async def create_post(
     db: Session = Depends(get_db)
 ):
     
-    circle = db.query(Circle).filter(Circle.id == post_data.circle_id).first()
+    circle = db.query(Circle).filter(Circle.creator_id == current_user.id).first()
     if not circle:
         raise CircleNotFound()
     
@@ -312,7 +441,7 @@ async def create_post(
         raise AccessDenied()
     
     new_post = Post(
-        circle_id=post_data.circle_id,
+        circle_id=circle.id,
         author_id=current_user.id,
         content=post_data.content,
         created_at=datetime.now()
@@ -331,24 +460,6 @@ async def create_post(
     )
     
     
-@app.get("/my-circle/posts", response_model=list[PostResponse])
-async def get_my_circle_posts(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    res = []
-    for post in current_user.posts:
-        post_response = PostResponse(
-            post_id=post.post_id,
-            circle_id=post.circle_id,
-            author_id=current_user.id,
-            content=post.content,
-            created_at=post.created_at,
-            author_name=current_user.name
-        )
-        res.append(post_response)
-    
-    return res
 
 
 @app.get("/circles/{circle_id}/posts", response_model=list[PostResponse])
@@ -428,10 +539,21 @@ async def delete_post(
     
     return {"message": f"Your post created at {post_to_delete.created_at} was deleted"}
 
-    
+
+
 @app.get("/users")
 async def get_all_users(db: Session = Depends(get_db)):
     users = db.query(User).all()
     return {"users": users, "count": len(users)}
 
-
+@app.get("/debug/routes")
+async def get_routes():
+    routes = []
+    for route in app.routes:
+        if hasattr(route, "methods"):
+            routes.append({
+                "path": route.path,
+                "methods": list(route.methods),
+                "name": route.name
+            })
+    return routes
