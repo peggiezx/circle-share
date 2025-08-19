@@ -27,13 +27,14 @@ export function InviteModal({onClose, onInviteSuccess} : InviteModalProps) {
             onInviteSuccess();
             onClose();
         } catch (err: any) {
-
-            if(err.message.include("not found")) {
+            if(err.message?.includes("not found")) {
                 setError(`${email} isn't on CircleShare yet. They'll need to sign up first!`)
-            } else if (err.message.include("already")) {
+            } else if (err.message?.includes("already")) {
                 setError(`${email} is already in your circle`)
+            } else if (err.message?.includes("No auth token")) {
+                setError(err.message || "You need to log in again")
             } else {
-                setError(err.message || "Failed to send invites")
+                setError(err.message || "Failed to send invite");
             }
         } finally {
             setLoading(false);
