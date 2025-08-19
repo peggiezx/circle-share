@@ -7,9 +7,11 @@ import { Register } from "./components/Register";
 import { MyCircle } from "./components/MyCircle";
 import "./App.css";
 
+type View = 'timeline' | 'my-circle' | 'register' |'login';
+
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-    const [currentView, setCurrentView] = useState<"login" | "register">("login");
+    const [currentView, setCurrentView] = useState<View>("login");
 
     useEffect(() => {
         const token = getStoredToken();
@@ -23,6 +25,7 @@ function App() {
 
     const handleLoginSuccess = () => {
         setIsLoggedIn(true);
+        setCurrentView("timeline")
     }
 
     const handleLoginError = () => {
@@ -44,14 +47,35 @@ function App() {
 
     if (isLoggedIn) {
         return (
-            <div>
-                <h1>My Days</h1>
-                <button onClick={handleLogout} style={{ padding: "8px 16px"}}>Logout</button>
-                <PostCreationForm onPostSuccess={handlePostSuccess}/>
-                {/* to be updated to my-circle/posts */}
-                <Timeline ref={timelineRef} />
-                <MyCircle />
+          <div className="app-container">
+            <div className="tab-navigation">
+              <h1>My Days</h1>
+              <button onClick={handleLogout} style={{ padding: "8px 16px" }}>
+                Logout
+              </button>
+              <button
+                className={`tab ${currentView === "timeline" ? "active" : ""}`}
+                onClick={() => setCurrentView("timeline")}
+              >
+                My Days
+              </button>
+
+              <button
+                className={`tab ${currentView === "my-circle" ? "active" : ""}`}
+                onClick={() => setCurrentView("my-circle")}
+              >
+                My Circle
+              </button>
             </div>
+
+            {currentView === "timeline" && (
+              <>
+                <PostCreationForm onPostSuccess={handlePostSuccess}/>
+                <Timeline ref={timelineRef}/>
+              </>
+            )}
+            {currentView === "my-circle" && (<MyCircle />)}
+          </div>
         );
     }
 
