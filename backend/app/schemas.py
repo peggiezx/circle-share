@@ -35,7 +35,7 @@ class ErrorDetail(BaseModel):
     
 
 class CircleCreate(BaseModel):
-    name: str = Field(default="My Circle", min_length=1, max_length=180)
+    name: Optional[str] = Field(default=None, min_length=1, max_length=180)
 
 
 class CircleResponse(BaseModel):
