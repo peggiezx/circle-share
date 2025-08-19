@@ -201,12 +201,12 @@ async def invite_user_to_circle(
     if curr_circle.creator_id != current_user.id:
         raise AccessDenied()
     
-    # NEW Oso-inpsired auth
-    try:
-        policy_engine.require_authorization(current_user, "invite_members", curr_circle)
-        print(" Both systems agreed: ALLOW")
-    except AccessDenied:
-        print(" Disagreement: Current = ALLOW, Oso = DENY")
+    # # NEW Oso-inpsired auth
+    # try:
+    #     policy_engine.require_authorization(current_user, "invite_members", curr_circle)
+    #     print(" Both systems agreed: ALLOW")
+    # except AccessDenied:
+    #     print(" Disagreement: Current = ALLOW, Oso = DENY")
     
     invitee_user = db.query(User).filter(User.email == invitee_data.email).first()
     if not invitee_user:
