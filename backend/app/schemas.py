@@ -48,10 +48,34 @@ class CircleResponse(BaseModel):
         from_attributes = True 
 
 
-class MyCirclesResponse(BaseModel):
+class CirclesJoinedResponse(BaseModel):
     created_circles: list[CircleResponse] # Circles you created
     member_circles: list[CircleResponse] # Circles you're a member of
 
+
+class MyCircleResponse(BaseModel):
+    id: int
+    name: str
+    member_count: int
+    
+# bfore joining the circle
+class UserResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    
+    class Config:
+        orm_mode = True
+
+# after joining the circle
+class MemberResponse(BaseModel):
+    id: int
+    name: str
+    email: str
+    # joined_at: datetime
+    
+    class Config:
+        orm_mode = True
 
 class Invitee(BaseModel):
     email: EmailStr
