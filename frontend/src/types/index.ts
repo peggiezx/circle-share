@@ -32,3 +32,16 @@ export interface CircleMember {
   name: string;
   email: string;
 }
+
+
+export interface Invitation {
+    id: number,
+    from_user_name: string;
+    from_user_email: string;
+    status: string;
+    created_at: string
+}
+
+export interface InvitationAction{
+    action: string
+}

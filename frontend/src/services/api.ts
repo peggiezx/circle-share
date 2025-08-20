@@ -1,4 +1,4 @@
-import type { CircleMember, LoginResponse, Post, Token } from "../types";
+import type { CircleMember, Invitation, LoginResponse, Post } from "../types";
 
 export async function registerUser(
   name: string,
@@ -67,7 +67,7 @@ export async function fetchTimeline(): Promise<Post[]> {
   }
   const res = await fetch("http://127.0.0.1:8000/timeline", {
     headers: {
-      Authorization: `Bearer ${token}`,
+      'Authorization': `Bearer ${token}`,
     },
   });
 
@@ -94,7 +94,7 @@ export async function createPost(
   const res = await fetch("http://127.0.0.1:8000/posts/", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${token}`,
+      'Authorization': `Bearer ${token}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
@@ -122,7 +122,7 @@ export async function deletePost(postId: number): Promise<void> {
   const res = await fetch(`http://127.0.0.1:8000/posts/${postId}`, {
     method: "DELETE",
     headers: {
-      Authorization: `Bearer ${token}`,
+      'Authorization': `Bearer ${token}`,
     },
   });
 
@@ -140,7 +140,7 @@ export const getMyCircleMembers = async (): Promise<CircleMember[]> => {
 
   const res = await fetch("http://127.0.0.1:8000/my-circle/members", {
     headers: {
-      Authorization: `Bearer ${token}`,
+      'Authorization': `Bearer ${token}`,
     },
   });
 
@@ -152,26 +152,27 @@ export const getMyCircleMembers = async (): Promise<CircleMember[]> => {
   return member_data;
 };
 
-export const inviteToCircle = async (email: string): Promise<void> => {
-  const token = getStoredToken();
-  if (!token) {
-    throw new Error("No auth token found");
-  }
+// 
+// export const inviteToCircle = async (email: string): Promise<void> => {
+//   const token = getStoredToken();
+//   if (!token) {
+//     throw new Error("No auth token found");
+//   }
 
-  const res = await fetch("http://127.0.0.1:8000/my-circle/invite", {
-    method: "POST",
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-type': 'application/json',
-    },
-    body: JSON.stringify({ email }),
-  });
+//   const res = await fetch("http://127.0.0.1:8000/my-circle/invite", {
+//     method: "POST",
+//     headers: {
+//       'Authorization': `Bearer ${token}`,
+//       'Content-type': 'application/json',
+//     },
+//     body: JSON.stringify({ email }),
+//   });
 
-  if (!res.ok) {
-    const error = await res.json();
-    throw new Error(error.detail || "Failed to send invite");
-  }
-};
+//   if (!res.ok) {
+//     const error = await res.json();
+//     throw new Error(error.detail || "Failed to send invite");
+//   }
+// };
 
 export const removeMemberFromCircle = async (
   memberId: number
@@ -191,7 +192,7 @@ export const removeMemberFromCircle = async (
     {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${token}`,
+        'Authorization': `Bearer ${token}`,
       },
     }
   );
@@ -202,3 +203,73 @@ export const removeMemberFromCircle = async (
     throw new Error(error.detail || "Failed to remove member");
   }
 };
+
+
+export async function sendInvitation(
+    email: string
+): Promise<void> {
+    const token = getStoredToken();
+    if (!token) {
+    throw new Error("No auth token found");
+    }
+
+    const res = await fetch("http://127.0.0.1:8000/my-circle/invite", {
+        method: "POST",
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-type': 'application/json'
+        },
+        body: JSON.stringify({ email }),
+    });
+
+    if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.detail || "Failed to send invite");
+    }
+}
+
+export async function fetchInvitation(): Promise<Invitation[]> {
+    const token = getStoredToken();
+    if (!token) {
+      throw new Error("No auth token found");
+    }
+
+    const res = await fetch("http://127.0.0.1:8000/invitations/received", {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        },
+    });
+
+    if (!res.ok) {
+        throw new Error("No invitation found")
+    }
+
+    const data: Invitation[] = await res.json()
+    return data
+}
+
+export async function respondInvitation(
+    invitationID: number,
+    action: string,
+): Promise<void> {
+     const token = getStoredToken();
+     if (!token) {
+       throw new Error("No auth token found");
+     }
+
+     const res = await fetch(`http://127.0.0.1:8000/invitations/${invitationID}/respond`, {
+        method: "POST",
+        headers: {
+         'Authorization': `Bearer ${token}`,
+         'Content-type': "application/json",
+        },
+        body: JSON.stringify({
+            action,
+        })
+
+     });
+
+     if (!res.ok) {
+        throw new Error("Failed to respond to the invitation")
+     }
+}

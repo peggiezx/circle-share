@@ -69,7 +69,7 @@ export const Timeline = forwardRef<TimelineRef>((props, ref) => {
            {error && <p>Error: {error}</p>}
            {posts.map(post => (
                 <div key={post.post_id} style={{ border: '1px solid #eee', padding: '16px', margin: '8px 0'}}>
-                    {/* <h3>{post.author_name}</h3> */}
+                    <h3>{post.author_name}</h3>
                     <p>{post.content}</p>
                     <div>
                         <button 

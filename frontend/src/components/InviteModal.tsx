@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { inviteToCircle } from "../services/api";
+import { sendInvitation } from "../services/api";
 
 interface InviteModalProps {
     onClose: () => void;
@@ -22,7 +22,7 @@ export function InviteModal({onClose, onInviteSuccess} : InviteModalProps) {
         }
         setLoading(true);
         try {
-            await inviteToCircle(email);
+            await sendInvitation(email);
             setEmail("");
             onInviteSuccess();
             onClose();

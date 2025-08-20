@@ -66,7 +66,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
     
     new_circle = Circle(
-        name = "My days",
+        name = f"{new_user.name}'s Circle",
         creator_id = new_user.id,        
     )
     

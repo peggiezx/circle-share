@@ -6,8 +6,9 @@ import { PostCreationForm } from "./components/PostCreationForm";
 import { Register } from "./components/Register";
 import { MyCircle } from "./components/MyCircle";
 import "./App.css";
+import { Invitations } from "./components/Invitations";
 
-type View = 'timeline' | 'my-circle' | 'register' |'login';
+type View = 'timeline' | 'my-circle' | 'register' |'login' | 'invitations';
 
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -49,7 +50,7 @@ function App() {
         return (
           <div className="app-container">
             <div className="tab-navigation">
-              <h1>My Days</h1>
+              <h1>Circle Share</h1>
               <button onClick={handleLogout} style={{ padding: "8px 16px" }}>
                 Logout
               </button>
@@ -66,15 +67,22 @@ function App() {
               >
                 My Circle
               </button>
+              <button
+                className={`tab ${currentView === "invitations" ? "active" : ""}`}
+                onClick={() => setCurrentView("invitations")}
+              >
+                Invitations
+              </button>
             </div>
 
             {currentView === "timeline" && (
               <>
-                <PostCreationForm onPostSuccess={handlePostSuccess}/>
-                <Timeline ref={timelineRef}/>
+                <PostCreationForm onPostSuccess={handlePostSuccess} />
+                <Timeline ref={timelineRef} />
               </>
             )}
-            {currentView === "my-circle" && (<MyCircle />)}
+            {currentView === "my-circle" && <MyCircle />}
+            {currentView === "invitations" && <Invitations/>}
           </div>
         );
     }
