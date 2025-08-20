@@ -51,4 +51,19 @@ class AccountDeactivated(HTTPException):
 class UserNotInCircle(HTTPException):
     def __init__(self):
         super().__init__(status_code=400, detail="User is not a member of this circle")
-        
+
+
+# Invite related
+class InviteAlreadySent(HTTPException):
+    def __init__(self):
+        super().__init__(status_code=409, detail="Invitation already sent")
+
+
+class InviteNotFound(HTTPException):
+    def __init__(self):
+        super().__init__(status_code=404, detail="Invitation not found")
+
+
+class InviteAlreadyResponded(HTTPException):
+    def __init__(self):
+        super().__init__(status_code=400, detail="Invitation already responded")

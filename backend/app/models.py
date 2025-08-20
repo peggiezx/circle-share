@@ -51,3 +51,16 @@ class Post(Base):
     
     author = relationship("User", back_populates="posts")
     circle = relationship("Circle", back_populates="posts")
+
+
+class CircleInvitation(Base):
+    __tablename__ = "circle_invites"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    from_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    to_user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    status = Column(String, default="pending")
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    from_user = relationship("User", foreign_keys=[from_user_id])
+    to_user = relationship("User", foreign_keys=[to_user_id])

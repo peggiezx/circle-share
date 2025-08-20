@@ -2,12 +2,12 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
 from .database import get_db, engine, Base
-from .schemas import CirclesJoinedResponse, MemberToRemove, PostBase, PostResponse, UserCreate, UserLogin, CircleCreate, CircleResponse, MyCircleResponse, Invitee, InviteeResponse, UserResponse
-from .models import Post, User, Circle, CircleMember
+from .schemas import CirclesJoinedResponse, InvitationAction, InvitationResponse, MemberToRemove, PostBase, PostResponse, UserCreate, UserLogin, CircleCreate, CircleResponse, MyCircleResponse, Invitee, UserResponse
+from .models import CircleInvitation, Post, User, Circle, CircleMember
 from .auth.custom_auth import hash_password, verify_password, create_user_token, get_current_user, SECRET_KEY, ACCESS_TOKEN_MINUTES
 from datetime import datetime, timedelta
-from .exceptions import CircleNotFound, PostNotFound, UserAlreadyJoined, UserNotFound, InvalidCredentials, EmailAlreadyExists, AccessDenied, UserNotInCircle
-from .error_handlers import access_denied_handler, circle_not_found_handler, post_not_found_handler, user_already_joined_handler, user_not_found_handler, email_already_registered_handler, invalid_credentials_handler, user_not_in_circle_handler
+from .exceptions import CircleNotFound, PostNotFound, UserAlreadyJoined, UserNotFound, InvalidCredentials, EmailAlreadyExists, AccessDenied, UserNotInCircle, InviteAlreadyResponded, InviteNotFound, InviteAlreadySent
+from .error_handlers import access_denied_handler, circle_not_found_handler, post_not_found_handler, user_already_joined_handler, user_not_found_handler, email_already_registered_handler, invalid_credentials_handler, user_not_in_circle_handler, invite_already_responded_handler, invite_not_found_handler, invite_already_sent_handler
 from .auth.oso_patterns.policy_engine import policy_engine
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -31,6 +31,13 @@ app.add_exception_handler(AccessDenied, access_denied_handler)
 app.add_exception_handler(UserAlreadyJoined, user_already_joined_handler)
 app.add_exception_handler(UserNotInCircle, user_not_in_circle_handler)
 app.add_exception_handler(PostNotFound, post_not_found_handler)
+app.add_exception_handler(InviteNotFound, invite_not_found_handler)
+app.add_exception_handler(InviteAlreadyResponded, invite_already_responded_handler)
+app.add_exception_handler(InviteAlreadySent, invite_already_sent_handler)
+
+
+
+
 
 
 session = Session()
@@ -104,7 +111,7 @@ async def login_user(credentials: UserLogin, db: Session = Depends(get_db)):
 
     raise InvalidCredentials()
 
-
+# fastapi testing 
 @app.post("/token")
 async def token_for_docs(
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -149,8 +156,9 @@ async def create_circle(
     creator: User = Depends(get_current_user), 
     db: Session = Depends(get_db)):
     
+    circle_name = circle.name if circle.name else f"{creator.name} Circle"
     new_circle = Circle(
-        name = circle.name,
+        name = circle_name,
         creator_id = creator.id
     )
     
@@ -171,6 +179,7 @@ async def create_circle(
     print(f"Response object: {response}")
     return response
 
+
 @app.get("/my-circle", response_model=MyCircleResponse)
 async def get_my_circle(
     current_user: User = Depends(get_current_user),
@@ -186,8 +195,8 @@ async def get_my_circle(
         member_count=len(my_circle.memebers)
     )
 
-
-@app.post("/my-circle/invite", response_model=InviteeResponse)
+# invite members to my circle
+@app.post("/my-circle/invite", response_model=InvitationResponse)
 async def invite_user_to_circle(
     invitee_data: Invitee,
     current_user: User = Depends(get_current_user),
@@ -215,14 +224,96 @@ async def invite_user_to_circle(
     if invitee_user in curr_circle.members:
         raise UserAlreadyJoined()
     
-    curr_circle.members.append(invitee_user)
-    db.commit()
+    existing_invite = db.query(CircleInvitation).filter(
+        CircleInvitation.from_user_id == current_user.id,
+        CircleInvitation.to_user_id == invitee_user.id,
+        CircleInvitation.status == "pending"
+    ).first()
     
-    return InviteeResponse(
-        circle_joined=curr_circle.name,
-        circle_owner=current_user.name
+    if existing_invite:
+        raise InviteAlreadySent()
+    
+    new_invite = CircleInvitation(
+        from_user_id=current_user.id,
+        to_user_id=invitee_user.id,
+        status="pending",
+    )
+    
+    db.add(new_invite)
+    db.commit()
+    db.refresh(new_invite)
+    
+    return InvitationResponse(
+        id=new_invite.id,
+        from_user_name=current_user.name,
+        from_user_email=current_user.email,
+        status='pending',
+        created_at=new_invite.created_at
     )
 
+
+@app.get("/invitations/received", response_model=list[InvitationResponse])
+async def get_pending_invites(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    circle_invitations = db.query(CircleInvitation).filter(
+        CircleInvitation.to_user_id == current_user.id, 
+        CircleInvitation.status=='pending'
+        ).all()
+    
+    res = []
+    
+    for invite in circle_invitations:
+        new_invite = InvitationResponse (
+            id=invite.id,
+            from_user_name=invite.from_user.name,
+            from_user_email=invite.from_user.email,
+            status='pending',
+            created_at=invite.created_at
+        )
+        res.append(new_invite)
+    
+    return res
+    
+
+@app.post("/invitations/{invitation_id}/respond")
+async def respond_to_invites(
+    invitation_id: int,
+    action: InvitationAction,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    invite = db.query(CircleInvitation).filter(
+        CircleInvitation.id == invitation_id,
+        CircleInvitation.to_user_id == current_user.id
+    ).first()
+    
+    if not invite:
+        raise InviteNotFound()
+    
+    if invite.status != "pending":
+        raise InviteAlreadyResponded()
+    
+    if action.action == 'accept':
+        
+        from_user_circle = db.query(Circle).filter(Circle.creator_id == invite.from_user_id).first()
+        to_user_circle=db.query(Circle).filter(Circle.creator_id == current_user.id).first()
+        
+        from_user_circle.members.append(current_user)
+        to_user_circle.members.append(invite.from_user)
+
+        db.delete(invite)
+        db.commit()
+        return {"message": "You've accepted the invitation"}
+    
+    elif action.action == 'decline':
+        db.delete(invite)
+        db.commit()
+        return {"message": "You've declined the invitation"}
+         
+
+# get all my own posts
 @app.get("/my-circle/posts", response_model=list[PostResponse])
 async def get_my_circle_posts(
     current_user: User = Depends(get_current_user),
@@ -242,17 +333,19 @@ async def get_my_circle_posts(
     
     return res
 
-
+# get all the circle members
 @app.get("/my-circle/members", response_model=list[UserResponse])
 async def get_my_circle_members(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     circle = db.query(Circle).options(joinedload(Circle.members)).filter(Circle.creator_id == current_user.id).first()
+    members = [member for member in circle.members if member.id != current_user.id]
     
-    return circle.members
+    return members
 
 
+# remove a member in my circle
 @app.delete("/my-circle/members/{member_id}")
 async def remove_member(
     member_id: int,
@@ -290,6 +383,7 @@ async def remove_member(
     return {"message": f"You have removed {member_to_remove_name} from your circle."}
 
 
+
 @app.get("/circles/joined", response_model=CirclesJoinedResponse)
 async def get_joined_circles(
     current_user: User = Depends(get_current_user), 
@@ -301,42 +395,42 @@ async def get_joined_circles(
     )
 
 
-@app.post("/circles/{circle_id}/invite", response_model=InviteeResponse)
-async def invite_user_to_circle(
-    circle_id: int,
-    invitee_data: Invitee,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
+# @app.post("/circles/{circle_id}/invite", response_model=InviteeResponse)
+# async def invite_user_to_circle(
+#     circle_id: int,
+#     invitee_data: Invitee,
+#     current_user: User = Depends(get_current_user),
+#     db: Session = Depends(get_db),
     
-):
-    curr_circle = db.get(Circle, circle_id)
-    if not curr_circle:
-        raise CircleNotFound()
+# ):
+#     curr_circle = db.get(Circle, circle_id)
+#     if not curr_circle:
+#         raise CircleNotFound()
     
-    if curr_circle.creator_id != current_user.id:
-        raise AccessDenied()
+#     if curr_circle.creator_id != current_user.id:
+#         raise AccessDenied()
     
-    # NEW Oso-inpsired auth
-    try:
-        policy_engine.require_authorization(current_user, "invite_members", curr_circle)
-        print(" Both systems agreed: ALLOW")
-    except AccessDenied:
-        print(" Disagreement: Current = ALLOW, Oso = DENY")
+#     # NEW Oso-inpsired auth
+#     try:
+#         policy_engine.require_authorization(current_user, "invite_members", curr_circle)
+#         print(" Both systems agreed: ALLOW")
+#     except AccessDenied:
+#         print(" Disagreement: Current = ALLOW, Oso = DENY")
     
-    invitee_user = db.query(User).filter(User.email == invitee_data.email).first()
-    if not invitee_user:
-        raise UserNotFound()
+#     invitee_user = db.query(User).filter(User.email == invitee_data.email).first()
+#     if not invitee_user:
+#         raise UserNotFound()
     
-    if invitee_user in curr_circle.members:
-        raise UserAlreadyJoined()
+#     if invitee_user in curr_circle.members:
+#         raise UserAlreadyJoined()
     
-    curr_circle.members.append(invitee_user)
-    db.commit()
+#     curr_circle.members.append(invitee_user)
+#     db.commit()
     
-    return InviteeResponse(
-        circle_joined=curr_circle.name,
-        circle_owner=current_user.name
-    )
+#     return InviteeResponse(
+#         circle_joined=curr_circle.name,
+#         circle_owner=current_user.name
+#     )
      
      
 @app.delete("/circles/{circle_id}/leave")
@@ -425,7 +519,7 @@ async def remove_member(
     
     return {"message": f"You have removed {member_to_delete_name} from your circle."}
 
-
+# create a post
 @app.post("/posts/", response_model=PostResponse)
 async def create_post(
     post_data: PostBase,
@@ -488,7 +582,8 @@ async def get_circle_posts(
         res.append(post_response)
                 
     return res
-     
+
+# get all the posts in the circles you joined
 @app.get("/timeline", response_model=list[PostResponse])
 async def get_timeline(
     current_user: User = Depends(get_current_user),
@@ -498,8 +593,9 @@ async def get_timeline(
     
     all_posts = []
     for circle in user_circles:
-        for p in circle.posts:
-            all_posts.append(p)  
+        # if (circle.creator_id != current_user.id):
+            for p in circle.posts:
+                all_posts.append(p)  
     
     all_posts.sort(key=lambda post: post.created_at, reverse=True)
     
@@ -515,7 +611,7 @@ async def get_timeline(
         for p in all_posts
     ]
 
-
+# remove a single post
 @app.delete("/posts/{post_id}")
 async def delete_post(
     post_id: int,
@@ -545,6 +641,7 @@ async def delete_post(
 async def get_all_users(db: Session = Depends(get_db)):
     users = db.query(User).all()
     return {"users": users, "count": len(users)}
+
 
 @app.get("/debug/routes")
 async def get_routes():

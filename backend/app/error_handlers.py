@@ -1,6 +1,6 @@
 from fastapi import Request
 from fastapi.responses import JSONResponse
-from .exceptions import AccessDenied, CircleNotFound, PostNotFound, UserAlreadyJoined, UserNotFound, EmailAlreadyExists, InvalidCredentials, UserNotInCircle
+from .exceptions import AccessDenied, CircleNotFound, InviteAlreadyResponded, InviteAlreadySent, InviteNotFound, PostNotFound, UserAlreadyJoined, UserNotFound, EmailAlreadyExists, InvalidCredentials, UserNotInCircle
 from .schemas import ErrorDetail
 from datetime import datetime
 
@@ -88,5 +88,25 @@ async def invalid_credentials_handler(request: Request, exc: InvalidCredentials)
 async def user_not_in_circle_handler(requests: Request, exc: UserNotInCircle):
     error_detail = ErrorDetail(
         type="user_not_in_circle",
+        message=exc.detail
+    )
+    
+#invitation related
+
+async def invite_not_found_handler(requests: Request, exc: InviteNotFound):
+    error_detail = ErrorDetail(
+        type="invite_not_found",
+        message=exc.detail
+    )
+
+async def invite_already_sent_handler(requests: Request, exc: InviteAlreadySent):
+    error_detail = ErrorDetail(
+        type="invite_already_sent",
+        message=exc.detail
+    )
+
+async def invite_already_responded_handler(requests: Request, exc: InviteAlreadyResponded):
+    error_detail = ErrorDetail(
+        type="invite_already_reponded",
         message=exc.detail
     )

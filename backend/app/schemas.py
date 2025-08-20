@@ -81,9 +81,19 @@ class Invitee(BaseModel):
     email: EmailStr
     
     
-class InviteeResponse(BaseModel):
-    circle_joined: str
-    circle_owner: str
+class InvitationResponse(BaseModel):
+    id: int
+    from_user_name: str
+    from_user_email: str
+    status: str
+    created_at:datetime
+    
+    class Config:
+        orm_mode = True
+
+
+class InvitationAction(BaseModel):
+    action: str
 
 
 class MemberToRemove(BaseModel):
