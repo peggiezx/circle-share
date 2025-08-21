@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
 from .database import get_db, engine, Base
@@ -15,6 +16,13 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail}
+    )
+    
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],

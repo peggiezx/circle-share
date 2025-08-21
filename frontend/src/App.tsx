@@ -5,113 +5,142 @@ import { clearStoredToken, getStoredToken } from "./services/api";
 import { PostCreationForm } from "./components/PostCreationForm";
 import { Register } from "./components/Register";
 import { MyCircle } from "./components/MyCircle";
-import "./App.css";
 import { Invitations } from "./components/Invitations";
 
-type View = 'timeline' | 'my-circle' | 'register' |'login' | 'invitations';
+type View = "timeline" | "my-circle" | "register" | "login" | "invitations";
 
 function App() {
-    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-    const [currentView, setCurrentView] = useState<View>("login");
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [currentView, setCurrentView] = useState<View>("login");
 
-    useEffect(() => {
-        const token = getStoredToken();
-        setIsLoggedIn(!!token);
-    }, []
-    );
-
-    const handleRegisterSuccess = () => {
-        setCurrentView("login")
+  // Check authentication on app load
+  useEffect(() => {
+    const token = getStoredToken();
+    setIsLoggedIn(!!token);
+    if (token) {
+      setCurrentView("timeline"); // Go to timeline if already logged in
     }
+  }, []);
 
-    const handleLoginSuccess = () => {
-        setIsLoggedIn(true);
-        setCurrentView("timeline")
-    }
+  // Auth handlers
+  const handleRegisterSuccess = () => {
+    setCurrentView("login");
+  };
 
-    const handleLoginError = () => {
-        setCurrentView("register");
-    }
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
+    setCurrentView("timeline");
+  };
 
-    const timelineRef = useRef<TimelineRef>(null);
+  const handleLoginError = () => {
+    setCurrentView("register");
+  };
 
-    const handlePostSuccess = () => {
-       timelineRef.current?.refreshTimeline();
-    };
+  const handleLogout = () => {
+    clearStoredToken();
+    setIsLoggedIn(false);
+    setCurrentView("login");
+  };
 
-    const handleLogout = () => {
-        clearStoredToken();
-        setIsLoggedIn(false);
-        setCurrentView("login");
-    }
+  // Timeline refresh handler
+  const timelineRef = useRef<TimelineRef>(null);
+  const handlePostSuccess = () => {
+    timelineRef.current?.refreshTimeline();
+  };
 
-
-    if (isLoggedIn) {
-        return (
-          <div className="app-container">
-            <div className="tab-navigation">
-              <h1>Circle Share</h1>
-              <button onClick={handleLogout} style={{ padding: "8px 16px" }}>
-                Logout
-              </button>
-              <button
-                className={`tab ${currentView === "timeline" ? "active" : ""}`}
-                onClick={() => setCurrentView("timeline")}
-              >
-                My Days
-              </button>
-
-              <button
-                className={`tab ${currentView === "my-circle" ? "active" : ""}`}
-                onClick={() => setCurrentView("my-circle")}
-              >
-                My Circle
-              </button>
-              <button
-                className={`tab ${currentView === "invitations" ? "active" : ""}`}
-                onClick={() => setCurrentView("invitations")}
-              >
-                Invitations
-              </button>
-            </div>
-
-            {currentView === "timeline" && (
-              <>
-                <PostCreationForm onPostSuccess={handlePostSuccess} />
-                <Timeline ref={timelineRef} />
-              </>
-            )}
-            {currentView === "my-circle" && <MyCircle />}
-            {currentView === "invitations" && <Invitations/>}
-          </div>
-        );
-    }
-
+  // Auth flow - clean separation
+  if (!isLoggedIn) {
     return (
-      <div>
-        <h1>Circle Share</h1>
+      <div className="font-sans min-h-screen bg-stone-50">
         {currentView === "login" ? (
-            <div>
-                <Login onLoginSuccess={handleLoginSuccess}
-                onLoginError={handleLoginError}/>
-                <p>Don't have an account?
-                <button onClick={()=> setCurrentView("register")}>Register here</button>
-                </p>
-            </div>
-        ):(
-            <div>
-                <Register onRegisterSuccess={handleRegisterSuccess} />
-                <p>
-                    Already have an account?
-                    <button onClick={() => setCurrentView("login")}>
-                        Login here
-                    </button>
-                </p>
-            </div>
+          <Login
+            onLoginSuccess={handleLoginSuccess}
+            onSwitchToRegister={() => setCurrentView("register")}
+          />
+        ) : (
+          <Register
+            onRegisterSuccess={handleRegisterSuccess}
+            onSwitchToLogin={() => setCurrentView("login")}
+          />
         )}
       </div>
     );
-    
+  }
+
+  // Main app - authenticated user
+  return (
+    <div className="font-sans min-h-screen bg-stone-50">
+      {/* Header */}
+      <header className="bg-white border-b border-stone-200 px-6 py-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-[#B3EBF2] rounded-full flex items-center justify-center">
+              <span className="text-sm font-bold text-gray-800">C</span>
+            </div>
+            <h1 className="text-xl font-serif font-bold text-gray-900">
+              CircleShare
+            </h1>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-stone-100 rounded-lg transition-colors"
+          >
+            Logout
+          </button>
+        </div>
+      </header>
+
+      {/* Navigation */}
+      <nav className="bg-white border-b border-stone-200 px-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex gap-1">
+            <button
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                currentView === "timeline"
+                  ? "border-[#85D1DB] text-[#85D1DB]"
+                  : "border-transparent text-gray-600 hover:text-gray-800"
+              }`}
+              onClick={() => setCurrentView("timeline")}
+            >
+              My Days
+            </button>
+            <button
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                currentView === "my-circle"
+                  ? "border-[#85D1DB] text-[#85D1DB]"
+                  : "border-transparent text-gray-600 hover:text-gray-800"
+              }`}
+              onClick={() => setCurrentView("my-circle")}
+            >
+              My Circle
+            </button>
+            <button
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                currentView === "invitations"
+                  ? "border-[#85D1DB] text-[#85D1DB]"
+                  : "border-transparent text-gray-600 hover:text-gray-800"
+              }`}
+              onClick={() => setCurrentView("invitations")}
+            >
+              Invitations
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Main Content */}
+      <main className="max-w-4xl mx-auto px-6 py-8">
+        {currentView === "timeline" && (
+          <div className="space-y-6">
+            <PostCreationForm onPostSuccess={handlePostSuccess} />
+            <Timeline ref={timelineRef} />
+          </div>
+        )}
+        {currentView === "my-circle" && <MyCircle />}
+        {currentView === "invitations" && <Invitations />}
+      </main>
+    </div>
+  );
 }
 
 export default App;

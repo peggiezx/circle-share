@@ -12,7 +12,13 @@ export async function registerUser(
   });
 
   if (!res.ok) {
-    throw new Error("Registration Failed");
+    const responseText = await res.text();
+    try {
+      const errorData = JSON.parse(responseText);
+      throw new Error(errorData.detail || "Registration Failed");
+    } catch (parseError) {
+      throw new Error(responseText || "Registration Failed");
+    }
   }
 
   return "Registration Success!";
@@ -29,15 +35,21 @@ export async function loginWithToken(
   });
 
   if (!res.ok) {
-    const errorData = await res.json();
+    const responseText = await res.text();
 
-    if (res.status === 404) {
-      throw new Error("USER_NOT_FOUND");
-    } else if (res.status === 401) {
-      throw new Error("INVALID_CREDENTIALS");
-    } else {
-      throw new Error("LOGIN_FAILED");
+    // First, try to parse JSON
+    let errorData;
+    try {
+      errorData = JSON.parse(responseText);
+    } catch (parseError) {
+      // If JSON parsing fails, throw the raw text
+      throw new Error(responseText || "Login Failed");
     }
+
+    // If JSON parsing succeeds, extract the message
+    const errorMessage =
+      errorData.message || errorData.detail || "Login Failed";
+    throw new Error(errorMessage);
   }
 
   return res.json();
@@ -72,7 +84,13 @@ export async function fetchTimeline(): Promise<Post[]> {
   });
 
   if (!res.ok) {
-    throw new Error("No post found");
+    const responseText = await res.text();
+    try {
+      const errorData = JSON.parse(responseText);
+      throw new Error(errorData.message || errorData.detail || "Login Failed");
+    } catch (parseError) {
+      throw new Error(responseText || "Login Failed");
+    }
   }
 
   const data: Post[] = await res.json();
