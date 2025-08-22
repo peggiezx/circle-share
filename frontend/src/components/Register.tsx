@@ -10,13 +10,35 @@ export function Register({onRegisterSuccess, onSwitchToLogin}: RegisterProps) {
     const [name, setName] = useState<string>("");
     const [email, setEmail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
-    const [errors, setErrors] = useState<{name?: string, email?: string, password?: string, general?: string}>({});
+    const [errors, setErrors] = useState<{name?: string, email?: string, password?: string, general?: string | React.ReactNode;}>({});
     const [loading, setLoading] = useState<boolean>(false);
     const [showPassword, setShowPassword] =useState<boolean>(false);
-
+    const [hasTyped, setHasTyped] = useState({name: false, email: false, password: false})
   
-    const validateName = (username: string) => {
-        if (!username) return "Username is required"
+    // detect input
+    const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setName(e.target.value);
+        if (!hasTyped.name && e.target.value.length > 0) {
+            setHasTyped((prev) => ({ ...prev, name: true }));
+        }
+    }
+
+    const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setEmail(e.target.value);
+        if (!hasTyped.email && e.target.value.length > 0) {
+            setHasTyped(prev => ({...prev, email: true}));
+        }
+    }
+
+    const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPassword(e.target.value);
+        if(!hasTyped.password && e.target.value.length > 0) {
+            setHasTyped(prev => ({...prev, password: true}));
+        }
+    }
+
+    const validateName = (name: string) => {
+        if (!name) return "Your name is required"
         return undefined
     }
 
@@ -37,20 +59,37 @@ export function Register({onRegisterSuccess, onSwitchToLogin}: RegisterProps) {
     }
 
     const handleNameBlur = () => {
-        const nameError = validateName(name);
-        setErrors((prev) => ({ ...prev, name: nameError || undefined, general: undefined }));
-    }
-
-    const handlePasswordBlur = () => {
-        const passwordError = validatePassword(password);
-        setErrors((prev) => ({...prev, password: passwordError || undefined, general: undefined}))
+        if (hasTyped.name) {
+            const nameError = validateName(name);
+            setErrors((prev) => ({
+              ...prev,
+              name: nameError || undefined,
+              general: undefined,
+            }));
+        }
     }
 
     const handleEmailBlur = () => {
-        const emailError = validateEmail(email);
-        setErrors((prev) => ({...prev, email: emailError || undefined, general: undefined}))
-    }
+        if (hasTyped.email) {
+            const emailError = validateEmail(email);
+            setErrors((prev) => ({
+            ...prev,
+            email: emailError || undefined,
+            general: undefined,
+            }));
+        }
+    };
 
+    const handlePasswordBlur = () => {
+        if (hasTyped.password) {
+            const passwordError = validatePassword(password);
+            setErrors((prev) => ({
+            ...prev,
+            password: passwordError || undefined,
+            general: undefined,
+            }));
+        }
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -78,8 +117,27 @@ export function Register({onRegisterSuccess, onSwitchToLogin}: RegisterProps) {
           errorMessage.includes("already")
         ) {
           setErrors({
-            general: "This email is already registered. Please log in instead.",
+            general: (
+              <span>
+                This email is already registered. Please{" "}
+                <button
+                  type="button"
+                  onClick={onSwitchToLogin}
+                  className="text-[#85D1DB] hover:text-[#B6F2D1] font-semibold underline focus:outline-none"
+                >
+                  log in
+                </button>{" "}
+                .
+              </span>
+            ),
           });
+        } else if (
+            errorMessage.includes("password")
+        ) {
+            setErrors({
+                general: "Your password is too simple. Please use letters, digits, and special symbols."
+            })
+
         } else {
           setErrors({
             general: "Registration failed. Please try again.",
@@ -95,20 +153,26 @@ export function Register({onRegisterSuccess, onSwitchToLogin}: RegisterProps) {
       <div className="min-h-screen bg-stone-50 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
           {/* Logo + Brand */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-[#B3EBF2] rounded-full mb-4 shadow-sm">
-              <span className="text-2xl font-bold text-gray-800">C</span>
+
+          <div className="text-center mb-8 ">
+            <div className="mb-2">
+              <img
+                src="/logo.svg"
+                alt="CircleShare Logo"
+                className="object-contain mx-auto drop-shadow-sm"
+                style={{ width: "180px", height: "auto" }}
+              />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2 font-serif">
-              CircleShare
-            </h1>
-            <p className="text-gray-600 font-sans">
-              Sign up to share your life moments
-            </p>
+            {/* <p className="text-gray-600 font-sans">Log into CircleShare</p> */}
           </div>
 
           {/* Main Form Card */}
           <div className="bg-white rounded-2xl shadow-lg border border-stone-200 p-8">
+            <div className="text-center mb-8">
+              <p className="text-gray-700 font-sans font-bold text-2xl">
+                Create a new account
+              </p>
+            </div>
             {/* General Error Message */}
             {errors.general && (
               <div
@@ -143,7 +207,7 @@ export function Register({onRegisterSuccess, onSwitchToLogin}: RegisterProps) {
                   htmlFor="name"
                   className="block text-sm font-semibold text-gray-800 mb-2 font-sans"
                 >
-                  Username
+                  Full Name
                 </label>
                 <input
                   id="name"
@@ -151,7 +215,7 @@ export function Register({onRegisterSuccess, onSwitchToLogin}: RegisterProps) {
                   type="text"
                   autoComplete="name"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={handleNameChange}
                   onBlur={handleNameBlur} // Add this
                   placeholder="Enter your full name"
                   className={`w-full px-4 py-3 border-2 rounded-xl text-base transition-all duration-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed font-sans ${
@@ -199,7 +263,7 @@ export function Register({onRegisterSuccess, onSwitchToLogin}: RegisterProps) {
                   type="text"
                   autoComplete="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={handleEmailChange}
                   onBlur={handleEmailBlur} // Add this
                   placeholder="Enter your email address"
                   className={`w-full px-4 py-3 border-2 rounded-xl text-base transition-all duration-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed font-sans ${
@@ -247,7 +311,7 @@ export function Register({onRegisterSuccess, onSwitchToLogin}: RegisterProps) {
                     type={showPassword ? "text" : "password"}
                     autoComplete="password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={handlePasswordChange}
                     onBlur={handlePasswordBlur}
                     placeholder="Enter your password"
                     className={`w-full px-4 py-3 border-2 rounded-xl text-base transition-all duration-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed font-sans ${

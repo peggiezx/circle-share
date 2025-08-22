@@ -16,10 +16,25 @@ export function Login({
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
-    general?: string;
+    general?: string | React.ReactNode;
   }>({});
   const [loading, setLoading] = useState<boolean>(false);
+  const [hasTyped, setHasTyped] = useState({email: false, password: false})
 
+  // Detect input
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    if (!hasTyped.email && e.target.value.length > 0) {
+        setHasTyped(prev => ({...prev, email: true}))
+    }
+  }
+
+  const handlePasswordChange = (e:React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+    if (!hasTyped.password && e.target.value.length > 0) {
+        setHasTyped(prev => ({...prev, password: true}))
+    }
+  }
   // Validation functions
   const validateEmail = (email: string) => {
     if (!email) return "Email is required";
@@ -31,19 +46,23 @@ export function Login({
 
   const validatePassword = (password: string) => {
     if (!password) return "Password is required";
-    if (password.length < 6) return "Password must be at least 6 characters";
+    if (password.length < 8) return "Password must be at least 8 characters";
     return "";
   };
 
   // Handle field validation on blur
   const handleEmailBlur = () => {
-    const emailError = validateEmail(email);
-    setErrors((prev) => ({ ...prev, email: emailError, general: "" }));
+    if (hasTyped.email) {
+        const emailError = validateEmail(email);
+        setErrors((prev) => ({ ...prev, email: emailError || undefined, general: undefined }));
+    }
   };
 
   const handlePasswordBlur = () => {
+    if (hasTyped.password) {
     const passwordError = validatePassword(password);
     setErrors((prev) => ({ ...prev, password: passwordError, general: "" }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -74,9 +93,19 @@ export function Login({
         errorMessage.includes("not found")
       ) {
         setErrors({
-          general: "Account not found. Check your email or create an account.",
+          general: (
+            <span>
+              Account not found. Check your email or {" "}
+              <button
+                type="button"
+                onClick={onSwitchToRegister}
+                className="text-[#85D1DB] hover:text-[#B6F2D1] font-semibold underline focus:outline-none"
+              >
+                create an account
+              </button>
+            </span>
+          ),
         });
-        onLoginError?.();
       } else {
         setErrors({ general: "Login failed. Please try again." });
       }
@@ -90,15 +119,15 @@ export function Login({
       <div className="w-full max-w-md">
         {/* Logo + Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#B3EBF2] rounded-full mb-4 shadow-sm">
-            <span className="text-2xl font-bold text-gray-800">C</span>
+          <div className="mb-2">
+            <img
+              src="/logo.svg"
+              alt="CircleShare Logo"
+              className="object-contain mx-auto drop-shadow-sm"
+              style={{width: '180px', height:'auto'}}
+            />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2 font-serif">
-            CircleShare
-          </h1>
-          <p className="text-gray-600 font-sans">
-            Log into CircleShare
-          </p>
+          {/* <p className="text-gray-600 font-sans">Log into CircleShare</p> */}
         </div>
 
         {/* Main Form Card */}
@@ -147,7 +176,7 @@ export function Login({
                 autoFocus
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={handleEmailChange}
                 onBlur={handleEmailBlur}
                 placeholder="Enter your email address"
                 className={`w-full px-4 py-3 border-2 rounded-xl text-base transition-all duration-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed font-sans ${
@@ -180,7 +209,7 @@ export function Login({
               )}
               {!errors.email && (
                 <p id="email-help" className="mt-2 text-sm text-gray-500">
-                  Use your work or personal email
+                  Use your personal email
                 </p>
               )}
             </div>
@@ -201,7 +230,7 @@ export function Login({
                   autoComplete="current-password"
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={handlePasswordChange}
                   onBlur={handlePasswordBlur}
                   placeholder="Enter your password"
                   className={`w-full px-4 py-3 pr-12 border-2 rounded-xl text-base transition-all duration-200 focus:outline-none disabled:bg-gray-50 disabled:cursor-not-allowed ${
