@@ -1,7 +1,11 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
-import { fetchTimeline, deletePost } from "../services/api";
+import { fetchTimeline, deletePost, fetchMyTimeline } from "../services/api";
 import type { Post } from "../types";
 
+interface TimelineProps {
+    type: 'my-days' | 'their-days';
+    title?: string;
+}
 
 const formatTimestamp = (timeStamp: string) => {
     const date = new Date(timeStamp);
@@ -19,7 +23,7 @@ export interface TimelineRef {
     refreshTimeline: () => void;
 }
 
-export const Timeline = forwardRef<TimelineRef>((props, ref) => {
+export const Timeline = forwardRef<TimelineRef, TimelineProps>(({ type, title }, ref) => {
     // state
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -28,7 +32,7 @@ export const Timeline = forwardRef<TimelineRef>((props, ref) => {
     const loadTimeline = async() => {
             try {
                 setLoading(true);
-                const data = await fetchTimeline();
+                const data = type === 'my-days' ? await fetchMyTimeline() : await fetchTimeline();
                 setPosts(data);
                 setError(null);
             } catch(err) {
@@ -41,7 +45,7 @@ export const Timeline = forwardRef<TimelineRef>((props, ref) => {
 
     useEffect(() => {
         loadTimeline();
-        }, []);
+        }, [type]);
 
     useImperativeHandle(ref, () => ({
         refreshTimeline: loadTimeline
@@ -64,21 +68,31 @@ export const Timeline = forwardRef<TimelineRef>((props, ref) => {
 
 
     return (
-        <div>
-           {loading && <p>Your timeline is loading</p>}
-           {error && <p>Error: {error}</p>}
-           {posts.map(post => (
-                <div key={post.post_id} style={{ border: '1px solid #eee', padding: '16px', margin: '8px 0'}}>
-                    <h3>{post.author_name}</h3>
-                    <p>{post.content}</p>
-                    <div>
-                        <button 
-                            onClick={() => handleDeletePost(post.post_id)}>Delete</button>
-                    </div>
-                    <small>Posted {formatTimestamp(post.created_at)}</small>
-                </div>
-           ))}  
-        </div>
-    )
+      <div>
+        {loading && <p>Timeline is loading</p>}
+        {error && <p>Error: {error}</p>}
+        {posts.map((post) => (
+          <div
+            key={post.post_id}
+            style={{
+              border: "1px solid #eee",
+              padding: "16px",
+              margin: "8px 0",
+            }}
+          >
+            <h3>{post.author_name}</h3>
+            <p>{post.content}</p>
+            {type === "my-days" && (
+              <div>
+                <button onClick={() => handleDeletePost(post.post_id)}>
+                  Delete
+                </button>
+              </div>
+            )}
+            <small>Posted {formatTimestamp(post.created_at)}</small>
+          </div>
+        ))}
+      </div>
+    );
 });
 

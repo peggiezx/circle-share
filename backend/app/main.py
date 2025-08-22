@@ -44,10 +44,6 @@ app.add_exception_handler(InviteAlreadyResponded, invite_already_responded_handl
 app.add_exception_handler(InviteAlreadySent, invite_already_sent_handler)
 
 
-
-
-
-
 session = Session()
 
 
@@ -319,6 +315,34 @@ async def respond_to_invites(
         db.delete(invite)
         db.commit()
         return {"message": "You've declined the invitation"}
+
+# get all the posts in the circles you joined
+@app.get("/their-days", response_model=list[PostResponse])
+async def get_their_days(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # user_circles = current_user.circles
+    user_circle_ids = [circle.id for circle in current_user.circles]
+    
+    posts = db.query(Post).filter(
+        Post.circle_id.in_(user_circle_ids),
+        Post.author_id != current_user.id
+    ).options(
+        joinedload(Post.author)
+    ).order_by(Post.created_at.desc()).all()
+    
+    return [
+        PostResponse(
+                post_id=p.post_id,
+                circle_id=p.circle_id,
+                author_id=p.author_id,
+                content=p.content,
+                created_at=p.created_at,
+                author_name=p.author.name
+            )
+        for p in posts
+    ]
          
 
 # get all my own posts
@@ -591,33 +615,6 @@ async def get_circle_posts(
                 
     return res
 
-# get all the posts in the circles you joined
-@app.get("/timeline", response_model=list[PostResponse])
-async def get_timeline(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    user_circles = current_user.circles
-    
-    all_posts = []
-    for circle in user_circles:
-        # if (circle.creator_id != current_user.id):
-            for p in circle.posts:
-                all_posts.append(p)  
-    
-    all_posts.sort(key=lambda post: post.created_at, reverse=True)
-    
-    return [
-        PostResponse(
-                post_id=p.post_id,
-                circle_id=p.circle_id,
-                author_id=p.author_id,
-                content=p.content,
-                created_at=p.created_at,
-                author_name=p.author.name
-            )
-        for p in all_posts
-    ]
 
 # remove a single post
 @app.delete("/posts/{post_id}")

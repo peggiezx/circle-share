@@ -77,9 +77,36 @@ export async function fetchTimeline(): Promise<Post[]> {
   if (!token) {
     throw new Error("No auth token found");
   }
-  const res = await fetch("http://127.0.0.1:8000/timeline", {
+  const res = await fetch("http://127.0.0.1:8000/their-days", {
     headers: {
       'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const responseText = await res.text();
+    try {
+      const errorData = JSON.parse(responseText);
+      throw new Error(errorData.message || errorData.detail || "Failed to fetch their days");
+    } catch (parseError) {
+      throw new Error(responseText || "Failed to fetch their days");
+    }
+  }
+
+  const data: Post[] = await res.json();
+  return data;
+}
+
+
+export async function fetchMyTimeline(): Promise<Post[]> {
+  const token = getStoredToken();
+
+  if (!token) {
+    throw new Error("No auth token found");
+  }
+  const res = await fetch("http://127.0.0.1:8000/my-circle/posts", {
+    headers: {
+      Authorization: `Bearer ${token}`,
     },
   });
 
@@ -96,6 +123,7 @@ export async function fetchTimeline(): Promise<Post[]> {
   const data: Post[] = await res.json();
   return data;
 }
+
 
 export async function createPost(
   content: string,

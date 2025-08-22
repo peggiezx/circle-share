@@ -7,7 +7,7 @@ import { Register } from "./components/Register";
 import { MyCircle } from "./components/MyCircle";
 import { Invitations } from "./components/Invitations";
 
-type View = "timeline" | "my-circle" | "register" | "login" | "invitations";
+type View = "my-days" | "their-days" | "my-circle" | "register" | "login" | "invitations";
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
@@ -18,7 +18,7 @@ function App() {
     const token = getStoredToken();
     setIsLoggedIn(!!token);
     if (token) {
-      setCurrentView("timeline"); // Go to timeline if already logged in
+      setCurrentView("my-days"); // Go to timeline if already logged in
     }
   }, []);
 
@@ -29,7 +29,7 @@ function App() {
 
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);
-    setCurrentView("timeline");
+    setCurrentView("my-days");
   };
 
   const handleLoginError = () => {
@@ -79,7 +79,7 @@ function App() {
             </div>
             <h1 className="text-xl font-serif font-bold text-gray-900">
               CircleShare
-            </h1>
+            </h1>{" "}
           </div>
           <button
             onClick={handleLogout}
@@ -96,13 +96,23 @@ function App() {
           <div className="flex gap-1">
             <button
               className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                currentView === "timeline"
+                currentView === "my-days"
                   ? "border-[#85D1DB] text-[#85D1DB]"
                   : "border-transparent text-gray-600 hover:text-gray-800"
               }`}
-              onClick={() => setCurrentView("timeline")}
+              onClick={() => setCurrentView("my-days")}
             >
               My Days
+            </button>
+            <button
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+                currentView === "their-days"
+                  ? "border-[#85D1DB] text-[#85D1DB]"
+                  : "border-transparent text-gray-600 hover:text-gray-800"
+              }`}
+              onClick={() => setCurrentView("their-days")}
+            >
+              Their Days
             </button>
             <button
               className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
@@ -130,12 +140,18 @@ function App() {
 
       {/* Main Content */}
       <main className="max-w-4xl mx-auto px-6 py-8">
-        {currentView === "timeline" && (
+        {currentView === "my-days" && (
           <div className="space-y-6">
             <PostCreationForm onPostSuccess={handlePostSuccess} />
-            <Timeline ref={timelineRef} />
+            <Timeline ref={timelineRef} type="my-days" />
           </div>
         )}
+        {currentView === "their-days" && (
+          <div className="space-y-6">
+            <Timeline ref={timelineRef} type="their-days" />
+          </div>
+        )}
+
         {currentView === "my-circle" && <MyCircle />}
         {currentView === "invitations" && <Invitations />}
       </main>
