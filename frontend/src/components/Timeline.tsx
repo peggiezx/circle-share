@@ -69,35 +69,34 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({ type, onPostSe
 
 
     return (
-      <div className="space-y-4">
+      <div>
         {loading && (
-          <div className="flex items-center justify-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#B3EBF2]"></div>
+          <div>
+            <div></div>
           </div>
         )}
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-            <p className="text-red-600 text-sm">Error: {error}</p>
+          <div>
+            <p>Error: {error}</p>
           </div>
         )}
         {posts.map((post) => (
           <div
             key={post.post_id}
-            className="bg-white/70 backdrop-blur-sm rounded-xl border border-[#B3EBF2]/30 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer hover:border-[#B3EBF2]/50"
             onClick={() => onPostSelect?.(post)}
           >
-            <div className="p-6">
+            <div>
               {/* Author Header */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#B3EBF2] rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold text-sm">
+              <div>
+                <div>
+                  <div>
+                    <span>
                       {post.author_name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{post.author_name}</h3>
-                    <p className="text-sm text-gray-500">Posted {formatTimestamp(post.created_at)}</p>
+                    <h3>{post.author_name}</h3>
+                    <p>Posted {formatTimestamp(post.created_at)}</p>
                   </div>
                 </div>
                 {type === "my-days" && (
@@ -106,7 +105,6 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({ type, onPostSe
                       e.stopPropagation();
                       handleDeletePost(post.post_id);
                     }}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                   >
                     🗑️
                   </button>
@@ -114,18 +112,18 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({ type, onPostSe
               </div>
 
               {/* Post Content */}
-              <div className="prose prose-sm max-w-none">
-                <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">{post.content}</p>
+              <div>
+                <p>{post.content}</p>
               </div>
             </div>
           </div>
         ))}
         
         {!loading && posts.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-4xl mb-4">📝</div>
-            <h3 className="font-medium text-gray-700 mb-2">No posts yet</h3>
-            <p className="text-sm text-gray-500">
+          <div>
+            <div>📝</div>
+            <h3>No posts yet</h3>
+            <p>
               {type === "my-days" ? "Start sharing your thoughts!" : "Waiting for posts from your circle."}
             </p>
           </div>
