@@ -11,19 +11,40 @@ import type { Post } from "./types";
 type View = "my-days" | "their-days" | "my-circle" | "register" | "login" | "notifications";
 
 function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [currentView, setCurrentView] = useState<View>("login");
+  // Initialize based on stored token to prevent flash
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!getStoredToken());
+  const [currentView, setCurrentView] = useState<View>(() => 
+    getStoredToken() ? "my-days" : "login"
+  );
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [showPostForm, setShowPostForm] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [showUserDropdown, setShowUserDropdown] = useState<boolean>(false);
 
   // Check authentication on app load
   useEffect(() => {
     const token = getStoredToken();
     setIsLoggedIn(!!token);
     if (token) {
-      setCurrentView("my-days"); // Go to timeline if already logged in
+      setCurrentView("my-days");
     }
+    setIsLoading(false); // Set loading to false after auth check
   }, []);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (showUserDropdown && !target.closest('.user-dropdown')) {
+        setShowUserDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showUserDropdown]);
 
   // Auth handlers
   const handleRegisterSuccess = () => {
@@ -54,6 +75,18 @@ function App() {
     setSelectedPost(post);
   };
 
+  // Show loading spinner during initial auth check
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Auth flow - clean separation
   if (!isLoggedIn) {
     return (
@@ -73,17 +106,17 @@ function App() {
     );
   }
 
-  // Main app - authenticated user
+  // Main app - authenticated user  
   return (
-    <div className="flex min-h-screen flex-col">
-      {/* HEADER */}
-      <header className="h-16 border-b bg-white px-6 flex items-center justify-between shadow-sm">
+    <div className="min-h-screen ">
+      {/* HEADER - Full width across top */}
+      <header className="w-full h-16 bg-brand border-b px-6 flex items-center justify-between shadow-sm relative z-10">
         {/* Left - Logo */}
         <div className="flex items-center">
           <img
             src="/logo.svg"
             alt="CircleShare logo"
-            className="h-8 w-auto object-contain"
+            className="h-4 w-auto object-contain"
           />
         </div>
 
@@ -101,7 +134,7 @@ function App() {
           {currentView === "my-days" && (
             <button
               onClick={() => setShowPostForm(!showPostForm)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-#B3EBF2-500 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <span>{showPostForm ? "✕" : "+"}</span>
               <span className="hidden sm:inline">
@@ -123,20 +156,78 @@ function App() {
             🔔
           </button>
 
-          {/* User Avatar / Logout Button */}
-          <button
-            onClick={handleLogout}
-            className="w-8 h-8 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors flex items-center justify-center"
-            aria-label="Logout"
-            title="Logout"
-          >
-            👤
-          </button>
+          {/* User Avatar / Dropdown Menu */}
+          <div className="relative user-dropdown">
+            <button
+              onClick={() => setShowUserDropdown(!showUserDropdown)}
+              className="w-8 h-8 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors flex items-center justify-center"
+              aria-label="User menu"
+              title="User menu"
+            >
+              👤
+            </button>
+
+            {/* Dropdown Menu */}
+            {showUserDropdown && (
+              <div
+                className="absolute mt-2 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10"
+                style={{
+                  transform: "translate(calc(-5% + 32px), 0px)",
+                  minWidth: "320px",
+                  right: "0px",
+                }}
+              >
+                <div className="px-4 py-2 border-b border-gray-100">
+                  <div className="text-sm font-medium text-gray-900">
+                    Your Account
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Manage your profile
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    // Add profile settings handler here
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <span className="inline-block w-4 mr-2">⚙️</span>
+                  Settings
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    // Add help handler here
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  <span className="inline-block w-4 mr-2">❓</span>
+                  Help & Support
+                </button>
+
+                <div className="border-t border-gray-100 my-1"></div>
+
+                <button
+                  onClick={() => {
+                    setShowUserDropdown(false);
+                    handleLogout();
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                >
+                  <span className="inline-block w-4 mr-2">🚪</span>
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Main Content with Sidebar */}
-      <div className="flex flex-1">
+      {/* Main Content with Sidebar - Below header */}
+      <div className="flex" style={{ height: "calc(100vh - 4rem)" }}>
         {/* Sidebar Navigation */}
         <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
           {/* Navigation */}
@@ -156,19 +247,11 @@ function App() {
                     : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                 }`}
               >
-                <span className="text-lg">{item.icon}</span>
+                {/* <span className="text-lg">{item.icon}</span> */}
                 <span>{item.label}</span>
               </button>
             ))}
           </nav>
-
-          {/* User Status */}
-          <div className="p-4 border-t border-gray-200">
-            <div className="flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-600 font-medium">Online</span>
-            </div>
-          </div>
         </aside>
 
         {/* Main Content Area */}
@@ -330,8 +413,8 @@ function App() {
                     Select a post
                   </h3>
                   <p className="text-sm">
-                    Click on any post in the feed to view detailed information and
-                    actions here
+                    Click on any post in the feed to view detailed information
+                    and actions here
                   </p>
                 </div>
               </div>

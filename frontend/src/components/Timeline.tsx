@@ -1,6 +1,7 @@
 import { useState, useEffect, useImperativeHandle, forwardRef } from "react";
 import { fetchTimeline, deletePost, fetchMyTimeline } from "../services/api";
 import type { Post } from "../types";
+import PostEntryCard from "./PostEntryCard";
 
 interface TimelineProps {
     type: 'my-days' | 'their-days';
@@ -81,50 +82,21 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({ type, onPostSe
           </div>
         )}
         {posts.map((post) => (
-          <div
-            key={post.post_id}
-            onClick={() => onPostSelect?.(post)}
-          >
-            <div>
-              {/* Author Header */}
-              <div>
-                <div>
-                  <div>
-                    <span>
-                      {post.author_name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                  <div>
-                    <h3>{post.author_name}</h3>
-                    <p>Posted {formatTimestamp(post.created_at)}</p>
-                  </div>
-                </div>
-                {type === "my-days" && (
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeletePost(post.post_id);
-                    }}
-                  >
-                    🗑️
-                  </button>
-                )}
-              </div>
-
-              {/* Post Content */}
-              <div>
-                <p>{post.content}</p>
-              </div>
-            </div>
-          </div>
+          <PostEntryCard
+          key={post.post_id} 
+          post={post} 
+          type={type} 
+          onPostSelect={onPostSelect} />
         ))}
-        
+
         {!loading && posts.length === 0 && (
           <div>
             <div>📝</div>
             <h3>No posts yet</h3>
             <p>
-              {type === "my-days" ? "Start sharing your thoughts!" : "Waiting for posts from your circle."}
+              {type === "my-days"
+                ? "Start sharing your thoughts!"
+                : "Waiting for posts from your circle."}
             </p>
           </div>
         )}

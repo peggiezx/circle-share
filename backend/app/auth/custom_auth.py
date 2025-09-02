@@ -16,7 +16,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 SECRET_KEY = config("SECRET_KEY")
 ALGORITHM = config("ALGORITHM", default="HS256")
-ACCESS_TOKEN_MINUTES = int(config("ACCESS_TOKEN_MINUTES", default="20"))
+ACCESS_TOKEN_MINUTES = int(config("ACCESS_TOKEN_MINUTES", default="480"))
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
