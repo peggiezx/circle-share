@@ -23,24 +23,44 @@ export default function PostEntryCard({post, type, onPostSelect}: PostEntryCardP
     };
 
     const date = new Date(post.created_at)
-    const posted_date = date.toLocaleDateString('en-US', {month: 'long', day: 'numeric'})
+    const month = date.toLocaleDateString('en-US', {month:'short'})
+    const day = date.toLocaleDateString('en-US', {day: 'numeric'})
+    const posted_date = date.toLocaleDateString('en-US', {month: 'short', day: 'numeric'})
+    const authorInitials = post.author_name.split(' ').map(name => name.charAt(0).toUpperCase()).join('')
 
 
 
     return (
-      <div className="max-w-sm w-full lg:max-w-full lg:flex">
-        <div key={post.post_id} onClick={() => onPostSelect?.(post)}>
-          <div className="h-48 lg:h-auto lg:w-48 flex-none bg-cover rounded-t lg:rounded-t">
-            {posted_date}
+      <div
+        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4 cursor-pointer hover:shadow-md transition-shadow"
+        onClick={() => onPostSelect?.(post)}
+      >
+        <div className="flex gap-4">
+          {/* Date Section - Left Side */}
+          <div className="flex-shrink-0 text-center">
+            <div className="text-4xl font-bold text-gray-900">{month}</div>
+            <div className="text-4xl font-bold text-gray-900">{day}</div>
           </div>
-          <div>
-            <span>{post.author_name}</span>
-          </div>
-          <div>
-            <span>{post.content}</span>
-          </div>
-          <div>
-            <small>Posted {formatTimestamp(post.created_at)} </small>
+
+          {/* Content Section - Right Side */}
+          <div className="flex-1">
+            {/* Author Header */}
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                {authorInitials}
+              </div>
+              <span className="font-medium text-gray-700">
+                {post.author_name}
+              </span>
+            </div>
+
+            {/* Post Content */}
+            <div className="text-gray-800 mb-2">{post.content}</div>
+
+            {/* Timestamp */}
+            <div className="text-sm text-gray-500">
+              Posted {formatTimestamp(post.created_at)}
+            </div>
           </div>
         </div>
       </div>

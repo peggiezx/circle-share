@@ -1,3 +1,5 @@
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
+
 import { Timeline, type TimelineRef } from "./components/Timeline";
 import { Login } from "./components/Login";
 import { useEffect, useRef, useState } from "react";
@@ -7,6 +9,7 @@ import { Register } from "./components/Register";
 import { MyCircle } from "./components/MyCircle";
 import { Invitations } from "./components/Invitations";
 import type { Post } from "./types";
+
 
 type View = "my-days" | "their-days" | "my-circle" | "register" | "login" | "notifications";
 
@@ -255,172 +258,179 @@ function App() {
         </aside>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex">
+        <PanelGroup direction="horizontal" className="flex-1">
           {/* Middle Column - Feed of Cards */}
-          <main className="flex-1 overflow-auto">
-            {/* Page Header */}
-            <div className="bg-white border-b border-gray-200 px-6 py-4">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {currentView === "my-days" && "My Days"}
-                  {currentView === "their-days" && "Their Days"}
-                  {currentView === "my-circle" && "My Circle"}
-                  {currentView === "notifications" && "Notifications"}
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  {currentView === "my-days" &&
-                    "Share your thoughts and moments"}
-                  {currentView === "their-days" &&
-                    "See what your circle is sharing"}
-                  {currentView === "my-circle" && "Manage your connections"}
-                  {currentView === "notifications" &&
-                    "Manage your notifications"}
-                </p>
-              </div>
-            </div>
-
-            {/* Content Area */}
-            <div className="p-6">
-              {/* My Days - Post Creation Form */}
-              {currentView === "my-days" && showPostForm && (
-                <div className="mb-6 bg-white rounded-lg border border-gray-200 p-6">
-                  <PostCreationForm onPostSuccess={handlePostSuccess} />
+          <Panel defaultSize={50} minSize={50}>
+            <main className="h-full overflow-auto">
+              {/* Page Header */}
+              <div className="bg-white border-b border-gray-200 px-6 py-4">
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {currentView === "my-days" && "My Days"}
+                    {currentView === "their-days" && "Their Days"}
+                    {currentView === "my-circle" && "My Circle"}
+                    {currentView === "notifications" && "Notifications"}
+                  </h1>
+                  <p className="text-gray-600 mt-1">
+                    {currentView === "my-days" &&
+                      "Share your thoughts and moments"}
+                    {currentView === "their-days" &&
+                      "See what your circle is sharing"}
+                    {currentView === "my-circle" && "Manage your connections"}
+                    {currentView === "notifications" &&
+                      "Manage your notifications"}
+                  </p>
                 </div>
-              )}
+              </div>
 
-              {/* Timeline/Feed Cards */}
-              {(currentView === "my-days" || currentView === "their-days") && (
-                <Timeline
-                  ref={timelineRef}
-                  type={currentView}
-                  onPostSelect={handlePostSelect}
-                />
-              )}
+              {/* Content Area */}
+              <div className="p-6">
+                {/* My Days - Post Creation Form */}
+                {currentView === "my-days" && showPostForm && (
+                  <div className="mb-6 bg-white rounded-lg border border-gray-200 p-6">
+                    <PostCreationForm onPostSuccess={handlePostSuccess} />
+                  </div>
+                )}
 
-              {/* My Circle Content */}
-              {currentView === "my-circle" && <MyCircle />}
+                {/* Timeline/Feed Cards */}
+                {(currentView === "my-days" ||
+                  currentView === "their-days") && (
+                  <Timeline
+                    ref={timelineRef}
+                    type={currentView}
+                    onPostSelect={handlePostSelect}
+                  />
+                )}
 
-              {/* Notifications Content */}
-              {currentView === "notifications" && <Invitations />}
-            </div>
-          </main>
+                {/* My Circle Content */}
+                {currentView === "my-circle" && <MyCircle />}
+
+                {/* Notifications Content */}
+                {currentView === "notifications" && <Invitations />}
+              </div>
+            </main>
+          </Panel>
+
+          <PanelResizeHandle className="w-1 bg-gray-300 hover:bg-blue-500 transition-colors cursor-col-resize" />
 
           {/* Right Column - Expanded Post View */}
-          <aside className="w-96 bg-white border-l border-gray-200 overflow-auto">
-            {selectedPost ? (
-              <div className="p-6">
-                {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-lg font-semibold text-gray-900">
-                    Post Details
-                  </h2>
-                  <button
-                    onClick={() => setSelectedPost(null)}
-                    className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    ✕
-                  </button>
-                </div>
+          <Panel defaultSize={50} minSize={50}>
+            <aside className="flex-1 bg-white border-l border-gray-200 overflow-auto">
+              {selectedPost ? (
+                <div className="p-6">
+                  {/* Header */}
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900">
+                      Post Details
+                    </h2>
+                    <button
+                      onClick={() => setSelectedPost(null)}
+                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      ✕
+                    </button>
+                  </div>
 
-                {/* Expanded Post Card */}
-                <div className="bg-gray-50 rounded-lg p-6 mb-6">
-                  {/* Author Section */}
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                      <span className="text-white font-semibold">
-                        {selectedPost.author_name.charAt(0).toUpperCase()}
-                      </span>
+                  {/* Expanded Post Card */}
+                  <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                    {/* Author Section */}
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                        <span className="text-white font-semibold">
+                          {selectedPost.author_name.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">
+                          {selectedPost.author_name}
+                        </h3>
+                        <p className="text-sm text-gray-500">
+                          Posted on{" "}
+                          {new Date(selectedPost.created_at).toLocaleDateString(
+                            "en-US",
+                            {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900">
-                        {selectedPost.author_name}
-                      </h3>
-                      <p className="text-sm text-gray-500">
-                        Posted on{" "}
-                        {new Date(selectedPost.created_at).toLocaleDateString(
-                          "en-US",
-                          {
-                            weekday: "long",
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          }
-                        )}
+
+                    {/* Post Content */}
+                    <div className="mb-4">
+                      <p className="text-gray-800 leading-relaxed">
+                        {selectedPost.content}
                       </p>
                     </div>
-                  </div>
 
-                  {/* Post Content */}
-                  <div className="mb-4">
-                    <p className="text-gray-800 leading-relaxed">
-                      {selectedPost.content}
-                    </p>
-                  </div>
-
-                  {/* Post Stats */}
-                  <div className="border-t border-gray-200 pt-4">
-                    <div className="flex items-center justify-between text-sm text-gray-500">
-                      <span>Post ID: {selectedPost.post_id}</span>
-                      <span>{selectedPost.content.length} characters</span>
+                    {/* Post Stats */}
+                    <div className="border-t border-gray-200 pt-4">
+                      <div className="flex items-center justify-between text-sm text-gray-500">
+                        <span>Post ID: {selectedPost.post_id}</span>
+                        <span>{selectedPost.content.length} characters</span>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Actions */}
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
+                      Actions
+                    </h3>
+
+                    <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200">
+                      <span>💬</span>
+                      <span>Reply to post</span>
+                    </button>
+
+                    <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200">
+                      <span>❤️</span>
+                      <span>Like post</span>
+                    </button>
+
+                    <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200">
+                      <span>🔗</span>
+                      <span>Share post</span>
+                    </button>
+
+                    {currentView === "my-days" &&
+                      selectedPost.author_name === "You" && (
+                        <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-red-200">
+                          <span>🗑️</span>
+                          <span>Delete post</span>
+                        </button>
+                      )}
+                  </div>
+
+                  {/* Coming Soon Notice */}
+                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-500 text-center">
+                      More features like comments and reactions coming soon!
+                    </p>
+                  </div>
                 </div>
-
-                {/* Actions */}
-                <div className="space-y-2">
-                  <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
-                    Actions
-                  </h3>
-
-                  <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200">
-                    <span>💬</span>
-                    <span>Reply to post</span>
-                  </button>
-
-                  <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200">
-                    <span>❤️</span>
-                    <span>Like post</span>
-                  </button>
-
-                  <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200">
-                    <span>🔗</span>
-                    <span>Share post</span>
-                  </button>
-
-                  {currentView === "my-days" &&
-                    selectedPost.author_name === "You" && (
-                      <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-red-200">
-                        <span>🗑️</span>
-                        <span>Delete post</span>
-                      </button>
-                    )}
+              ) : (
+                <div className="p-6 h-full flex items-center justify-center">
+                  <div className="text-center text-gray-500">
+                    <div className="text-4xl mb-4">👁️</div>
+                    <h3 className="font-medium text-gray-700 mb-2">
+                      Select a post
+                    </h3>
+                    <p className="text-sm">
+                      Click on any post in the feed to view detailed information
+                      and actions here
+                    </p>
+                  </div>
                 </div>
-
-                {/* Coming Soon Notice */}
-                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                  <p className="text-xs text-gray-500 text-center">
-                    More features like comments and reactions coming soon!
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="p-6 h-full flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <div className="text-4xl mb-4">👁️</div>
-                  <h3 className="font-medium text-gray-700 mb-2">
-                    Select a post
-                  </h3>
-                  <p className="text-sm">
-                    Click on any post in the feed to view detailed information
-                    and actions here
-                  </p>
-                </div>
-              </div>
-            )}
-          </aside>
-        </div>
+              )}
+            </aside>
+          </Panel>
+        </PanelGroup>
       </div>
     </div>
   );
