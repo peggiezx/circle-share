@@ -86,7 +86,7 @@ export function InviteModal({onClose, onInviteSuccess} : InviteModalProps) {
                     Cancel
                 </button>
                 <button>
-                    {loading ? "Sending..." : "Send Invite"}
+                    {loading ? "Sending..." : "Send"}
                 </button>
             </div> 
           </form>

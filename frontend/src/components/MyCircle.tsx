@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import type { CircleMember } from "../types";
 import { getMyCircleMembers, removeMemberFromCircle } from "../services/api";
-import { InviteModal } from "./InviteModal";
+import { InviteForm } from "./InviteForm";
+import { MemberCard } from "./MemberCard";
+import Modal from "./Modal";
 
 export function MyCircle () {
     const [members, setMembers] = useState<CircleMember[]>([]);
@@ -65,46 +67,63 @@ export function MyCircle () {
     }
 
     return (
-        <div className="my-circle-container">
-            <div className="header">
-                <h2>My Circle</h2>
-                <button onClick={() => setShowInviteModal(true)}>
-                    + invite
+        <div>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+                <div>
+                    <h2 className="text-2xl font-bold text-gray-900">My Circle</h2>
+                    <p className="text-gray-600 mt-1">Manage your circle members</p>
+                </div>
+                <button 
+                    onClick={() => setShowInviteModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                >
+                    <span>+</span>
+                    <span>Invite</span>
                 </button>
             </div>
 
+            {/* Members List */}
             {members.length === 0 ? (
-                <div className="empty-state">
-                    <p>Your circle is just you right now</p>
-                    <p>Invite others to start sharing your days!</p>
+                <div className="text-center py-12">
+                    <div className="text-4xl mb-4">👤</div>
+                    <h3 className="font-medium text-gray-700 mb-2">Your circle is just you right now</h3>
+                    <p className="text-gray-500 mb-6">Invite others to start sharing your days!</p>
+                    <button 
+                        onClick={() => setShowInviteModal(true)}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                        Send First Invite
+                    </button>
                 </div>
-            ):(
-                <div className="members-list">
-                    <p className="member-count">{members.length} member{members.length !== 1 ? "s":"" }</p>
-                    {members.map(member => (
-                        <div key={member.id} className="member-card">
-                            <div className="member-info">
-                                <h3>{member.name}</h3>
-                                <h3>{member.email}</h3>
-                            </div>
-                            <button
-                                onClick={() => handleRemoveMember(member.id, member.name)}
-                                className="remove-button"
-                            >
-                                Remove
-                            </button>
-                        </div>
-                    ))}
+            ) : (
+                <div>
+                    <p className="text-sm text-gray-600 mb-4">
+                        {members.length} member{members.length !== 1 ? "s" : ""} in your circle
+                    </p>
+                    <div className="space-y-3">
+                        {members.map(member => (
+                            <MemberCard 
+                                key={member.id} 
+                                member={member} 
+                                onRemove={handleRemoveMember}
+                            />
+                        ))}
+                    </div>
                 </div>
             )}
 
-            {showInviteModal && (
-                <InviteModal 
+            {/* Invite Modal */}
+            <Modal
+                isOpen={showInviteModal}
+                onClose={() => setShowInviteModal(false)}
+                title="Invite to Your Circle"
+            >
+                <InviteForm 
                     onClose={() => setShowInviteModal(false)}
                     onInviteSuccess={handleInviteSuccess}
                 />
-            )}
-            
+            </Modal>
         </div>
     )
 

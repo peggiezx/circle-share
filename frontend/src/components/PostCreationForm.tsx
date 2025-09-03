@@ -34,9 +34,9 @@ export function PostCreationForm ({onPostSuccess}: PostProps) {
 
     return (
       <form onSubmit={handleSubmit}>
-        {loading && <p>Creating your post...</p>}
+        {loading && <p className="text-blue-600 mb-3">Creating your post...</p>}
         {success && (
-          <p style={{ color: "green" }}>Post created successfully!</p>
+          <p className="text-green-600 mb-3">Post created successfully!</p>
         )}
 
         <textarea
@@ -44,11 +44,11 @@ export function PostCreationForm ({onPostSuccess}: PostProps) {
           value={content}
           onChange={(e) => setContent(e.target.value)}
           maxLength={maxLength}
-          rows={3}
+          rows={4}
+          className="w-full p-4 border border-gray-300 rounded-lg resize-vertical focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           style={{
-            width: "100%",
-            resize: "vertical",
-            border: remainingChars < 20 ? "2px solid organe" : "1px solid #ccc",
+            minHeight: "120px",
+            border: remainingChars < 20 ? "2px solid orange" : "1px solid #d1d5db",
           }}
         />
 
@@ -62,25 +62,23 @@ export function PostCreationForm ({onPostSuccess}: PostProps) {
                 color: remainingChars < 20 ? 'orange' : remainingChars < 0 ? 'red': '#666',
                 fontSize: '14px'
             }}>
+                {remainingChars} characters remaining
             </span>
 
             <button 
                 type="submit" 
                 disabled={loading || !content.trim() || content.length > maxLength}
-                style={{
-                    backgroundColor: (!content.trim() || loading) ? '#ccc' : '#1da1f2',
-                    color: 'white',
-                    border: 'none',
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    cursor: (!content.trim() || loading) ? 'not-allowed':'pointer'
-                }}
+                className={`px-6 py-2 rounded-lg font-medium transition-colors ${
+                    (!content.trim() || loading) 
+                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
+                        : 'bg-blue-600 text-white hover:bg-blue-700 cursor-pointer'
+                }`}
                 >
-                {loading ? 'Posting...' : 'Share Post'}
+                {loading ? 'Posting...' : 'Post'}
             </button>
         </div>
 
-        {error && <p>Error: {error}</p>}
+        {error && <p className="text-red-600 mt-3">Error: {error}</p>}
       </form>
     );
 

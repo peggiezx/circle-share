@@ -35,7 +35,11 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({ type, onPostSe
             try {
                 setLoading(true);
                 const data = type === 'my-days' ? await fetchMyTimeline() : await fetchTimeline();
-                setPosts(data);
+                // Sort posts by date descending (most recent first)
+                const sortedPosts = data.sort((a, b) => 
+                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+                );
+                setPosts(sortedPosts);
                 setError(null);
             } catch(err) {
                 setError("Failed to load the timeline")

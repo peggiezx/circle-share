@@ -27,32 +27,62 @@ export default function PostEntryCard({post, type, onPostSelect}: PostEntryCardP
     const day = date.toLocaleDateString('en-US', {day: 'numeric'})
     const posted_date = date.toLocaleDateString('en-US', {month: 'short', day: 'numeric'})
     const authorInitials = post.author_name.split(' ').map(name => name.charAt(0).toUpperCase()).join('')
+    
+    // Different styling for My Days vs Their Days
+    const isMyPost = type === "my-days"
+    
+    // Using inline styles to ensure colors show up
+    const cardBorderStyle = isMyPost ? "2px solid #93C5FD" : "1px solid #E5E7EB"
+    const avatarBgStyle = isMyPost ? "#3B82F6" : "#8B5CF6"
 
 
 
     return (
       <div
-        className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4 cursor-pointer hover:shadow-md transition-shadow"
+        className="bg-white rounded-lg shadow-sm p-4 mb-4 cursor-pointer hover:shadow-md transition-shadow"
+        style={{ border: cardBorderStyle }}
         onClick={() => onPostSelect?.(post)}
       >
         <div className="flex gap-4">
-          {/* Date Section - Left Side */}
-          <div className="flex-shrink-0 text-center">
-            <div className="text-4xl font-bold text-gray-900">{month}</div>
-            <div className="text-4xl font-bold text-gray-900">{day}</div>
-          </div>
+          {/* Date Section - Left Side (only for My Days) */}
+          {isMyPost && (
+            <div className="flex-shrink-0 text-center">
+              <div className="text-4xl font-bold text-gray-900">{month}</div>
+              <div className="text-4xl font-bold text-gray-900">{day}</div>
+            </div>
+          )}
 
           {/* Content Section - Right Side */}
           <div className="flex-1">
-            {/* Author Header */}
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                {authorInitials}
+            {/* Author Header - Only show for Their Days */}
+            {!isMyPost && (
+              <div className="flex items-center gap-2 mb-2">
+                <div 
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                  style={{ backgroundColor: avatarBgStyle }}
+                >
+                  {authorInitials}
+                </div>
+                <span className="font-medium text-gray-700">
+                  {post.author_name}
+                </span>
               </div>
-              <span className="font-medium text-gray-700">
-                {post.author_name}
-              </span>
-            </div>
+            )}
+            
+            {/* "You" indicator for My Days */}
+            {isMyPost && (
+              <div className="flex items-center gap-2 mb-2">
+                <div 
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                  style={{ backgroundColor: avatarBgStyle }}
+                >
+                  {authorInitials}
+                </div>
+                <span className="font-medium text-blue-600">
+                  You
+                </span>
+              </div>
+            )}
 
             {/* Post Content */}
             <div className="text-gray-800 mb-2">{post.content}</div>

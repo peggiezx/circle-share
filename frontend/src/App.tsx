@@ -9,6 +9,7 @@ import { Register } from "./components/Register";
 import { MyCircle } from "./components/MyCircle";
 import { Invitations } from "./components/Invitations";
 import type { Post } from "./types";
+import Modal from "./components/Modal";
 
 
 type View = "my-days" | "their-days" | "my-circle" | "register" | "login" | "notifications";
@@ -20,9 +21,9 @@ function App() {
     getStoredToken() ? "my-days" : "login"
   );
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-  const [showPostForm, setShowPostForm] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showUserDropdown, setShowUserDropdown] = useState<boolean>(false);
+  const [showPostModal, setShowPostModal] = useState<boolean>(false);
 
   // Check authentication on app load
   useEffect(() => {
@@ -70,8 +71,9 @@ function App() {
   const timelineRef = useRef<TimelineRef>(null);
   const handlePostSuccess = () => {
     timelineRef.current?.refreshTimeline();
-    setShowPostForm(false); // Hide the form after successful post
+    setShowPostModal(false); // Hide the modal after successful post
   };
+
 
   // Post selection handler
   const handlePostSelect = (post: Post) => {
@@ -133,19 +135,6 @@ function App() {
 
         {/* Right - Action Buttons */}
         <div className="flex items-center gap-3">
-          {/* Post Button - Only show on My Days */}
-          {currentView === "my-days" && (
-            <button
-              onClick={() => setShowPostForm(!showPostForm)}
-              className="flex items-center gap-2 px-4 py-2 bg-#B3EBF2-500 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <span>{showPostForm ? "✕" : "+"}</span>
-              <span className="hidden sm:inline">
-                {showPostForm ? "Cancel" : "Post"}
-              </span>
-            </button>
-          )}
-
           {/* Notification Button */}
           <button
             onClick={() => setCurrentView("notifications")}
@@ -264,33 +253,40 @@ function App() {
             <main className="h-full overflow-auto">
               {/* Page Header */}
               <div className="bg-white border-b border-gray-200 px-6 py-4">
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    {currentView === "my-days" && "My Days"}
-                    {currentView === "their-days" && "Their Days"}
-                    {currentView === "my-circle" && "My Circle"}
-                    {currentView === "notifications" && "Notifications"}
-                  </h1>
-                  <p className="text-gray-600 mt-1">
-                    {currentView === "my-days" &&
-                      "Share your thoughts and moments"}
-                    {currentView === "their-days" &&
-                      "See what your circle is sharing"}
-                    {currentView === "my-circle" && "Manage your connections"}
-                    {currentView === "notifications" &&
-                      "Manage your notifications"}
-                  </p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      {currentView === "my-days" && "My Days"}
+                      {currentView === "their-days" && "Their Days"}
+                      {currentView === "my-circle" && "My Circle"}
+                      {currentView === "notifications" && "Notifications"}
+                    </h1>
+                    <p className="text-gray-600 mt-1">
+                      {currentView === "my-days" &&
+                        "Share your thoughts and moments"}
+                      {currentView === "their-days" &&
+                        "See what your circle is sharing"}
+                      {currentView === "my-circle" && "Manage your connections"}
+                      {currentView === "notifications" &&
+                        "Manage your notifications"}
+                    </p>
+                  </div>
+                  
+                  {/* Post Button - Only show on My Days */}
+                  {currentView === "my-days" && (
+                    <button
+                      onClick={() => setShowPostModal(true)}
+                      className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                    >
+                      <span>+</span>
+                      <span>Create</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
               {/* Content Area */}
               <div className="p-6">
-                {/* My Days - Post Creation Form */}
-                {currentView === "my-days" && showPostForm && (
-                  <div className="mb-6 bg-white rounded-lg border border-gray-200 p-6">
-                    <PostCreationForm onPostSuccess={handlePostSuccess} />
-                  </div>
-                )}
 
                 {/* Timeline/Feed Cards */}
                 {(currentView === "my-days" ||
@@ -395,7 +391,7 @@ function App() {
 
                     <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200">
                       <span>🔗</span>
-                      <span>Share post</span>
+                      <span>Post</span>
                     </button>
 
                     {currentView === "my-days" &&
@@ -432,6 +428,15 @@ function App() {
           </Panel>
         </PanelGroup>
       </div>
+      
+      {/* Post Creation Modal */}
+      <Modal 
+        isOpen={showPostModal} 
+        onClose={() => setShowPostModal(false)}
+        title="Create Post"
+      >
+        <PostCreationForm onPostSuccess={handlePostSuccess} />
+      </Modal>
     </div>
   );
 }
