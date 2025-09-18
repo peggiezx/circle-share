@@ -1,15 +1,16 @@
-from fastapi import FastAPI, Depends, HTTPException, Request, status
+from fastapi import FastAPI, Depends, HTTPException, Request, status, File, UploadFile, Form
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session, joinedload
 from .database import get_db, engine, Base
-from .schemas import CirclesJoinedResponse, InvitationAction, InvitationResponse, MemberToRemove, PostBase, PostResponse, UserCreate, UserLogin, CircleCreate, CircleResponse, MyCircleResponse, Invitee, UserResponse
-from .models import CircleInvitation, Post, User, Circle, CircleMember
+from .schemas import CirclesJoinedResponse, InvitationAction, InvitationResponse, MemberToRemove, PostBase, PostResponse, UserCreate, UserLogin, CircleCreate, CircleResponse, MyCircleResponse, Invitee, UserResponse, CommentCreate, CommentResponse, LikeResponse
+from .models import CircleInvitation, Post, User, Circle, CircleMember, Comment, Like
 from .auth.custom_auth import hash_password, verify_password, create_user_token, get_current_user, SECRET_KEY, ACCESS_TOKEN_MINUTES
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from .exceptions import CircleNotFound, PostNotFound, UserAlreadyJoined, UserNotFound, InvalidCredentials, EmailAlreadyExists, AccessDenied, UserNotInCircle, InviteAlreadyResponded, InviteNotFound, InviteAlreadySent
 from .error_handlers import access_denied_handler, circle_not_found_handler, post_not_found_handler, user_already_joined_handler, user_not_found_handler, email_already_registered_handler, invalid_credentials_handler, user_not_in_circle_handler, invite_already_responded_handler, invite_not_found_handler, invite_already_sent_handler
 from .auth.oso_patterns.policy_engine import policy_engine
+from .cloudinary_config import upload_image
 from fastapi.middleware.cors import CORSMiddleware
 
 Base.metadata.create_all(bind=engine)
@@ -25,7 +26,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "http://localhost:5175", "http://127.0.0.1:5173", "http://127.0.0.1:5175"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -333,14 +334,7 @@ async def get_their_days(
     ).order_by(Post.created_at.desc()).all()
     
     return [
-        PostResponse(
-                post_id=p.post_id,
-                circle_id=p.circle_id,
-                author_id=p.author_id,
-                content=p.content,
-                created_at=p.created_at,
-                author_name=p.author.name
-            )
+        add_like_data_to_post(p, current_user, db)
         for p in posts
     ]
          
@@ -351,19 +345,10 @@ async def get_my_circle_posts(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    res = []
-    for post in current_user.posts:
-        post_response = PostResponse(
-            post_id=post.post_id,
-            circle_id=post.circle_id,
-            author_id=current_user.id,
-            content=post.content,
-            created_at=post.created_at,
-            author_name=current_user.name
-        )
-        res.append(post_response)
-    
-    return res
+    return [
+        add_like_data_to_post(post, current_user, db)
+        for post in current_user.posts
+    ]
 
 # get all the circle members
 @app.get("/my-circle/members", response_model=list[UserResponse])
@@ -554,7 +539,8 @@ async def remove_member(
 # create a post
 @app.post("/posts/", response_model=PostResponse)
 async def create_post(
-    post_data: PostBase,
+    content: str = Form(...),
+    photo: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -566,24 +552,31 @@ async def create_post(
     if circle.creator_id != current_user.id:
         raise AccessDenied()
     
+    # Handle photo upload if provided
+    photo_url = None
+    if photo and photo.filename:
+        # Validate file type
+        if not photo.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Read file data
+        file_data = await photo.read()
+        
+        # Upload to Cloudinary
+        photo_url = await upload_image(file_data, photo.filename)
+    
     new_post = Post(
         circle_id=circle.id,
         author_id=current_user.id,
-        content=post_data.content,
-        created_at=datetime.now()
+        content=content,
+        photo_url=photo_url,
+        created_at=datetime.now(timezone.utc)
     )
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
     
-    return PostResponse(
-        post_id=new_post.post_id,
-        circle_id=new_post.circle_id,
-        author_id=new_post.author_id,
-        content=new_post.content,
-        created_at=new_post.created_at,
-        author_name=current_user.name
-    )
+    return add_like_data_to_post(new_post, current_user, db)
     
     
 
@@ -616,6 +609,11 @@ async def get_circle_posts(
     return res
 
 
+# CORS preflight for posts
+@app.options("/posts/{post_id}")
+async def posts_preflight(post_id: int):
+    return {"message": "OK"}
+
 # remove a single post
 @app.delete("/posts/{post_id}")
 async def delete_post(
@@ -647,6 +645,199 @@ async def get_all_users(db: Session = Depends(get_db)):
     users = db.query(User).all()
     return {"users": users, "count": len(users)}
 
+
+# Helper function to add like data to posts
+def add_like_data_to_post(post: Post, current_user: User, db: Session) -> dict:
+    like_count = db.query(Like).filter(Like.post_id == post.post_id).count()
+    user_liked = db.query(Like).filter(
+        Like.post_id == post.post_id,
+        Like.user_id == current_user.id
+    ).first() is not None
+    
+    return {
+        "post_id": post.post_id,
+        "circle_id": post.circle_id,
+        "author_id": post.author_id,
+        "content": post.content,
+        "photo_url": post.photo_url,
+        "created_at": post.created_at,
+        "author_name": post.author.name,
+        "like_count": like_count,
+        "user_liked": user_liked
+    }
+
+# Comment endpoints
+@app.post("/posts/{post_id}/comments", response_model=CommentResponse)
+async def create_comment(
+    post_id: int,
+    comment_data: CommentCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Check if post exists
+    post = db.query(Post).filter(Post.post_id == post_id).first()
+    if not post:
+        raise PostNotFound()
+    
+    # Check if user has access to this post (member of the circle)
+    circle = post.circle
+    if current_user not in circle.members:
+        raise AccessDenied()
+    
+    # Create comment
+    new_comment = Comment(
+        post_id=post_id,
+        user_id=current_user.id,
+        content=comment_data.content,
+        created_at=datetime.now(timezone.utc)
+    )
+    
+    db.add(new_comment)
+    db.commit()
+    db.refresh(new_comment)
+    
+    return CommentResponse(
+        id=new_comment.id,
+        post_id=new_comment.post_id,
+        user_id=new_comment.user_id,
+        content=new_comment.content,
+        created_at=new_comment.created_at,
+        author_name=current_user.name
+    )
+
+@app.get("/posts/{post_id}/comments", response_model=list[CommentResponse])
+async def get_post_comments(
+    post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Check if post exists
+    post = db.query(Post).filter(Post.post_id == post_id).first()
+    if not post:
+        raise PostNotFound()
+    
+    # Check if user has access to this post (member of the circle)
+    circle = post.circle
+    if current_user not in circle.members:
+        raise AccessDenied()
+    
+    # Get comments
+    comments = db.query(Comment).filter(
+        Comment.post_id == post_id
+    ).options(
+        joinedload(Comment.author)
+    ).order_by(Comment.created_at.asc()).all()
+    
+    return [
+        CommentResponse(
+            id=comment.id,
+            post_id=comment.post_id,
+            user_id=comment.user_id,
+            content=comment.content,
+            created_at=comment.created_at,
+            author_name=comment.author.name
+        )
+        for comment in comments
+    ]
+
+@app.delete("/comments/{comment_id}")
+async def delete_comment(
+    comment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    comment = db.query(Comment).filter(Comment.id == comment_id).first()
+    if not comment:
+        raise HTTPException(status_code=404, detail="Comment not found")
+    
+    # Check if user can delete (author or post author or circle owner)
+    post = comment.post
+    can_delete = (
+        comment.user_id == current_user.id or
+        post.author_id == current_user.id or
+        post.circle.creator_id == current_user.id
+    )
+    
+    if not can_delete:
+        raise AccessDenied()
+    
+    db.delete(comment)
+    db.commit()
+    
+    return {"message": "Comment deleted successfully"}
+
+# Like endpoints
+@app.post("/posts/{post_id}/like")
+async def toggle_like(
+    post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Check if post exists
+    post = db.query(Post).filter(Post.post_id == post_id).first()
+    if not post:
+        raise PostNotFound()
+    
+    # Check if user has access to this post (member of the circle)
+    circle = post.circle
+    if current_user not in circle.members:
+        raise AccessDenied()
+    
+    # Check if user already liked this post
+    existing_like = db.query(Like).filter(
+        Like.post_id == post_id,
+        Like.user_id == current_user.id
+    ).first()
+    
+    if existing_like:
+        # Unlike the post
+        db.delete(existing_like)
+        db.commit()
+        return {"message": "Post unliked", "liked": False}
+    else:
+        # Like the post
+        new_like = Like(
+            post_id=post_id,
+            user_id=current_user.id,
+            created_at=datetime.now(timezone.utc)
+        )
+        db.add(new_like)
+        db.commit()
+        return {"message": "Post liked", "liked": True}
+
+@app.get("/posts/{post_id}/likes", response_model=list[LikeResponse])
+async def get_post_likes(
+    post_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Check if post exists
+    post = db.query(Post).filter(Post.post_id == post_id).first()
+    if not post:
+        raise PostNotFound()
+    
+    # Check if user has access to this post (member of the circle)
+    circle = post.circle
+    if current_user not in circle.members:
+        raise AccessDenied()
+    
+    # Get likes
+    likes = db.query(Like).filter(
+        Like.post_id == post_id
+    ).options(
+        joinedload(Like.user)
+    ).order_by(Like.created_at.desc()).all()
+    
+    return [
+        LikeResponse(
+            id=like.id,
+            post_id=like.post_id,
+            user_id=like.user_id,
+            created_at=like.created_at,
+            user_name=like.user.name
+        )
+        for like in likes
+    ]
 
 @app.get("/debug/routes")
 async def get_routes():

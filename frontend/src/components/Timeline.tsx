@@ -7,6 +7,7 @@ interface TimelineProps {
     type: 'my-days' | 'their-days';
     title?: string;
     onPostSelect?: (post: Post) => void;
+    selectedPostId?: number;
 }
 
 const formatTimestamp = (timeStamp: string) => {
@@ -25,7 +26,7 @@ export interface TimelineRef {
     refreshTimeline: () => void;
 }
 
-export const Timeline = forwardRef<TimelineRef, TimelineProps>(({ type, onPostSelect }, ref) => {
+export const Timeline = forwardRef<TimelineRef, TimelineProps>(({ type, onPostSelect, selectedPostId }, ref) => {
     // state
     const [posts, setPosts] = useState<Post[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
@@ -72,6 +73,11 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({ type, onPostSe
         }
     };
 
+    const handleEditPost = (post: Post) => {
+        // For now, just show an alert - you can implement edit functionality later
+        alert(`Edit functionality for post: "${post.content.substring(0, 50)}..." will be implemented soon!`);
+    };
+
 
     return (
       <div>
@@ -90,7 +96,10 @@ export const Timeline = forwardRef<TimelineRef, TimelineProps>(({ type, onPostSe
           key={post.post_id} 
           post={post} 
           type={type} 
-          onPostSelect={onPostSelect} />
+          onPostSelect={onPostSelect}
+          isSelected={selectedPostId === post.post_id}
+          onEditPost={type === 'my-days' ? handleEditPost : undefined}
+          onDeletePost={type === 'my-days' ? handleDeletePost : undefined} />
         ))}
 
         {!loading && posts.length === 0 && (

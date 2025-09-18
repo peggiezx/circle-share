@@ -3,11 +3,12 @@ import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Timeline, type TimelineRef } from "./components/Timeline";
 import { Login } from "./components/Login";
 import { useEffect, useRef, useState } from "react";
-import { clearStoredToken, getStoredToken } from "./services/api";
+import { clearStoredToken, getStoredToken, toggleLike } from "./services/api";
 import { PostCreationForm } from "./components/PostCreationForm";
 import { Register } from "./components/Register";
 import { MyCircle } from "./components/MyCircle";
 import { Invitations } from "./components/Invitations";
+import { CommentSection } from "./components/CommentSection";
 import type { Post } from "./types";
 import Modal from "./components/Modal";
 
@@ -24,6 +25,7 @@ function App() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [showUserDropdown, setShowUserDropdown] = useState<boolean>(false);
   const [showPostModal, setShowPostModal] = useState<boolean>(false);
+  const [isLikeToggling, setIsLikeToggling] = useState<boolean>(false);
 
   // Check authentication on app load
   useEffect(() => {
@@ -80,13 +82,35 @@ function App() {
     setSelectedPost(post);
   };
 
+  // Like handler
+  const handleLikeToggle = async () => {
+    if (!selectedPost || isLikeToggling) return;
+
+    try {
+      setIsLikeToggling(true);
+      const result = await toggleLike(selectedPost.post_id);
+      
+      // Update the selected post with new like data
+      setSelectedPost(prev => prev ? {
+        ...prev,
+        user_liked: result.liked,
+        like_count: result.liked ? prev.like_count + 1 : prev.like_count - 1
+      } : null);
+      
+    } catch (error) {
+      console.error("Failed to toggle like:", error);
+    } finally {
+      setIsLikeToggling(false);
+    }
+  };
+
   // Show loading spinner during initial auth check
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-100 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-brand-600 drop-shadow-sm"></div>
+          <p className="text-brand-700 font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -113,9 +137,9 @@ function App() {
 
   // Main app - authenticated user  
   return (
-    <div className="min-h-screen ">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-brand-100">
       {/* HEADER - Full width across top */}
-      <header className="w-full h-16 bg-brand border-b px-6 flex items-center justify-between shadow-sm relative z-10">
+      <header className="w-full h-16 bg-gradient-to-r from-brand-300 via-brand-200 to-brand-100 border-b border-[#B3EBF2]/30 px-6 flex items-center justify-between shadow-sm backdrop-blur-sm relative z-10">
         {/* Left - Logo */}
         <div className="flex items-center">
           <img
@@ -128,7 +152,7 @@ function App() {
         {/* Middle - Search Bar */}
         <div className="hidden md:flex flex-1 max-w-md mx-8">
           <input
-            className="w-full border border-gray-300 rounded-lg px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="w-full border border-brand-300/50 bg-white/80 backdrop-blur-sm rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-400 focus:bg-white transition-all duration-200 shadow-sm placeholder-gray-500"
             placeholder="Search people, places, posts…"
           />
         </div>
@@ -138,10 +162,10 @@ function App() {
           {/* Notification Button */}
           <button
             onClick={() => setCurrentView("notifications")}
-            className={`p-2 rounded-lg transition-colors ${
+            className={`p-2 rounded-xl transition-all duration-200 transform hover:scale-105 ${
               currentView === "notifications"
-                ? "bg-blue-100 text-blue-700"
-                : "hover:bg-gray-100 text-gray-600"
+                ? "bg-[#B3EBF2] text-gray-900 shadow-md"
+                : "hover:bg-white/70 text-[#85D1DB] shadow-sm backdrop-blur-sm"
             }`}
             aria-label="Notifications"
           >
@@ -152,7 +176,7 @@ function App() {
           <div className="relative user-dropdown">
             <button
               onClick={() => setShowUserDropdown(!showUserDropdown)}
-              className="w-8 h-8 rounded-full bg-gray-300 hover:bg-gray-400 transition-colors flex items-center justify-center"
+              className="w-8 h-8 rounded-full bg-[#B3EBF2] hover:bg-[#85D1DB] transition-all duration-200 transform hover:scale-105 shadow-md flex items-center justify-center text-gray-900"
               aria-label="User menu"
               title="User menu"
             >
@@ -221,7 +245,7 @@ function App() {
       {/* Main Content with Sidebar - Below header */}
       <div className="flex" style={{ height: "calc(100vh - 4rem)" }}>
         {/* Sidebar Navigation */}
-        <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+        <aside className="w-64 bg-white/70 backdrop-blur-sm flex flex-col shadow-sm">
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-2">
             {[
@@ -233,10 +257,10 @@ function App() {
               <button
                 key={item.id}
                 onClick={() => setCurrentView(item.id as View)}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left rounded-lg transition-colors ${
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left rounded-xl transition-all duration-200 transform hover:scale-105 ${
                   currentView === item.id
-                    ? "bg-blue-100 text-blue-700 font-medium"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    ? "bg-[#B3EBF2] text-gray-300 font-medium shadow-md"
+                    : "text-gray-600 hover:bg-[#B3EBF2]/10 hover:text-[#85D1DB] hover:shadow-sm"
                 }`}
               >
                 {/* <span className="text-lg">{item.icon}</span> */}
@@ -252,7 +276,7 @@ function App() {
           <Panel defaultSize={50} minSize={50}>
             <main className="h-full overflow-auto">
               {/* Page Header */}
-              <div className="bg-white border-b border-gray-200 px-6 py-4">
+              <div className="bg-gradient-to-r from-white/90 to-brand-50/90 backdrop-blur-sm border-b border-[#B3EBF2]/15 px-6 py-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
                     <h1 className="text-2xl font-bold text-gray-900">
@@ -276,7 +300,7 @@ function App() {
                   {currentView === "my-days" && (
                     <button
                       onClick={() => setShowPostModal(true)}
-                      className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      className="flex items-center gap-2 px-6 py-3 bg-[#B3EBF2] hover:bg-[#85D1DB] text-gray-900 rounded-xl transition-all duration-200 transform hover:scale-105 font-medium shadow-lg hover:shadow-xl"
                     >
                       <span>+</span>
                       <span>Create</span>
@@ -295,6 +319,7 @@ function App() {
                     ref={timelineRef}
                     type={currentView}
                     onPostSelect={handlePostSelect}
+                    selectedPostId={selectedPost?.post_id}
                   />
                 )}
 
@@ -307,11 +332,11 @@ function App() {
             </main>
           </Panel>
 
-          <PanelResizeHandle className="w-1 bg-gray-300 hover:bg-blue-500 transition-colors cursor-col-resize" />
+          <PanelResizeHandle className="w-1 bg-transparent hover:bg-[#B3EBF2]/60 transition-all duration-200 cursor-col-resize" />
 
           {/* Right Column - Expanded Post View */}
           <Panel defaultSize={50} minSize={50}>
-            <aside className="flex-1 bg-white border-l border-gray-200 overflow-auto">
+            <aside className="flex-1 bg-white/70 backdrop-blur-sm overflow-auto shadow-sm">
               {selectedPost ? (
                 <div className="p-6">
                   {/* Header */}
@@ -321,18 +346,18 @@ function App() {
                     </h2>
                     <button
                       onClick={() => setSelectedPost(null)}
-                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2 text-gray-400 hover:text-brand-600 hover:bg-brand-100/50 rounded-xl transition-all duration-200 transform hover:scale-105"
                     >
                       ✕
                     </button>
                   </div>
 
                   {/* Expanded Post Card */}
-                  <div className="bg-gray-50 rounded-lg p-6 mb-6">
+                  <div className="bg-gradient-to-br from-brand-50/50 to-white rounded-xl p-6 mb-6 shadow-sm border border-[#B3EBF2]/20">
                     {/* Author Section */}
                     <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                        <span className="text-white font-semibold">
+                      <div className="w-12 h-12 bg-[#B3EBF2] rounded-full flex items-center justify-center shadow-md">
+                        <span className="text-gray-900 font-semibold">
                           {selectedPost.author_name.charAt(0).toUpperCase()}
                         </span>
                       </div>
@@ -359,61 +384,56 @@ function App() {
 
                     {/* Post Content */}
                     <div className="mb-4">
-                      <p className="text-gray-800 leading-relaxed">
+                      <p className="text-gray-800 leading-relaxed mb-4">
                         {selectedPost.content}
                       </p>
-                    </div>
 
-                    {/* Post Stats */}
-                    <div className="border-t border-gray-200 pt-4">
-                      <div className="flex items-center justify-between text-sm text-gray-500">
-                        <span>Post ID: {selectedPost.post_id}</span>
-                        <span>{selectedPost.content.length} characters</span>
+                      {/* Photo Display */}
+                      {selectedPost.photo_url && (
+                        <div className="mb-4">
+                          <img
+                            src={selectedPost.photo_url}
+                            alt="Post photo"
+                            className="w-full max-h-96 object-cover rounded-lg border border-gray-200"
+                          />
+                        </div>
+                      )}
+                      
+                      {/* Like Button inside post card */}
+                      <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                        <div className="text-xs text-gray-500">
+                          {selectedPost.like_count} {selectedPost.like_count === 1 ? 'like' : 'likes'}
+                        </div>
+                        <button 
+                          onClick={handleLikeToggle}
+                          disabled={isLikeToggling}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 transform hover:scale-105 ${
+                            selectedPost?.user_liked
+                              ? "bg-red-100 text-red-600 hover:bg-red-200"
+                              : "bg-gray-100 text-gray-600 hover:bg-[#B3EBF2]/50"
+                          } ${isLikeToggling ? "opacity-50 cursor-not-allowed" : ""}`}
+                        >
+                          <span className={`transition-transform duration-200 ${selectedPost?.user_liked ? "scale-110" : ""}`}>
+                            {selectedPost?.user_liked ? "❤️" : "🤍"}
+                          </span>
+                          <span>
+                            {selectedPost?.user_liked ? "Unlike" : "Like"}
+                          </span>
+                        </button>
                       </div>
                     </div>
+
                   </div>
 
-                  {/* Actions */}
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
-                      Actions
-                    </h3>
-
-                    <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200">
-                      <span>💬</span>
-                      <span>Reply to post</span>
-                    </button>
-
-                    <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200">
-                      <span>❤️</span>
-                      <span>Like post</span>
-                    </button>
-
-                    <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200">
-                      <span>🔗</span>
-                      <span>Post</span>
-                    </button>
-
-                    {currentView === "my-days" &&
-                      selectedPost.author_name === "You" && (
-                        <button className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-red-200">
-                          <span>🗑️</span>
-                          <span>Delete post</span>
-                        </button>
-                      )}
-                  </div>
-
-                  {/* Coming Soon Notice */}
-                  <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                    <p className="text-xs text-gray-500 text-center">
-                      More features like comments and reactions coming soon!
-                    </p>
-                  </div>
+                  {/* Comment Section - Always visible, directly under post */}
+                  <CommentSection 
+                    postId={selectedPost.post_id}
+                    isVisible={true}
+                  />
                 </div>
               ) : (
                 <div className="p-6 h-full flex items-center justify-center">
                   <div className="text-center text-gray-500">
-                    <div className="text-4xl mb-4">👁️</div>
                     <h3 className="font-medium text-gray-700 mb-2">
                       Select a post
                     </h3>

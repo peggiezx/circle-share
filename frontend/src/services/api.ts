@@ -1,11 +1,11 @@
-import type { CircleMember, Invitation, LoginResponse, Post } from "../types";
+import type { CircleMember, Invitation, LoginResponse, Post, Comment, CommentCreate } from "../types";
 
 export async function registerUser(
   name: string,
   email: string,
   password: string
 ): Promise<string> {
-  const res = await fetch("http://127.0.0.1:8000/register", {
+  const res = await fetch("http://localhost:8000/register", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, email, password }),
@@ -28,7 +28,7 @@ export async function loginWithToken(
   email: string,
   password: string
 ): Promise<LoginResponse> {
-  const res = await fetch("http://127.0.0.1:8000/login", {
+  const res = await fetch("http://localhost:8000/login", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -77,7 +77,7 @@ export async function fetchTimeline(): Promise<Post[]> {
   if (!token) {
     throw new Error("No auth token found");
   }
-  const res = await fetch("http://127.0.0.1:8000/their-days", {
+  const res = await fetch("http://localhost:8000/their-days", {
     headers: {
       'Authorization': `Bearer ${token}`,
     },
@@ -104,7 +104,7 @@ export async function fetchMyTimeline(): Promise<Post[]> {
   if (!token) {
     throw new Error("No auth token found");
   }
-  const res = await fetch("http://127.0.0.1:8000/my-circle/posts", {
+  const res = await fetch("http://localhost:8000/my-circle/posts", {
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -127,26 +127,29 @@ export async function fetchMyTimeline(): Promise<Post[]> {
 
 export async function createPost(
   content: string,
-  circle_id: number
+  photo?: File | null
 ): Promise<Post> {
   const token = getStoredToken();
 
   if (!token) {
     throw new Error("No auth token found");
   }
-  console.log("Creating post with:", { content, circle_id }); // Debug log
-  console.log("Token:", token);
 
-  const res = await fetch("http://127.0.0.1:8000/posts/", {
+  // Create FormData for multipart form submission
+  const formData = new FormData();
+  formData.append("content", content);
+  
+  if (photo) {
+    formData.append("photo", photo);
+  }
+
+  const res = await fetch("http://localhost:8000/posts/", {
     method: "POST",
     headers: {
       'Authorization': `Bearer ${token}`,
-      "Content-Type": "application/json",
+      // Don't set Content-Type for FormData - let browser set it with boundary
     },
-    body: JSON.stringify({
-      content: content,
-      circle_id: circle_id,
-    }),
+    body: formData,
   });
 
   console.log("Response status:", res.status); // Debug log
@@ -165,7 +168,7 @@ export async function deletePost(postId: number): Promise<void> {
     throw new Error("No auth token found");
   }
 
-  const res = await fetch(`http://127.0.0.1:8000/posts/${postId}`, {
+  const res = await fetch(`http://localhost:8000/posts/${postId}`, {
     method: "DELETE",
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -184,7 +187,7 @@ export const getMyCircleMembers = async (): Promise<CircleMember[]> => {
     throw new Error("No auth token found");
   }
 
-  const res = await fetch("http://127.0.0.1:8000/my-circle/members", {
+  const res = await fetch("http://localhost:8000/my-circle/members", {
     headers: {
       'Authorization': `Bearer ${token}`,
     },
@@ -205,7 +208,7 @@ export const getMyCircleMembers = async (): Promise<CircleMember[]> => {
 //     throw new Error("No auth token found");
 //   }
 
-//   const res = await fetch("http://127.0.0.1:8000/my-circle/invite", {
+//   const res = await fetch("http://localhost:8000/my-circle/invite", {
 //     method: "POST",
 //     headers: {
 //       'Authorization': `Bearer ${token}`,
@@ -230,11 +233,11 @@ export const removeMemberFromCircle = async (
 
   console.log(
     "Removing member with URL:",
-    `http://127.0.0.1:8000/my-circle/members/${memberId}`
+    `http://localhost:8000/my-circle/members/${memberId}`
   ); // Debug log
 
   const res = await fetch(
-    `http://127.0.0.1:8000/my-circle/members/${memberId}`,
+    `http://localhost:8000/my-circle/members/${memberId}`,
     {
       method: "DELETE",
       headers: {
@@ -259,7 +262,7 @@ export async function sendInvitation(
     throw new Error("No auth token found");
     }
 
-    const res = await fetch("http://127.0.0.1:8000/my-circle/invite", {
+    const res = await fetch("http://localhost:8000/my-circle/invite", {
         method: "POST",
         headers: {
             'Authorization': `Bearer ${token}`,
@@ -280,7 +283,7 @@ export async function fetchInvitation(): Promise<Invitation[]> {
       throw new Error("No auth token found");
     }
 
-    const res = await fetch("http://127.0.0.1:8000/invitations/received", {
+    const res = await fetch("http://localhost:8000/invitations/received", {
         headers: {
             'Authorization': `Bearer ${token}`
         },
@@ -303,7 +306,7 @@ export async function respondInvitation(
        throw new Error("No auth token found");
      }
 
-     const res = await fetch(`http://127.0.0.1:8000/invitations/${invitationID}/respond`, {
+     const res = await fetch(`http://localhost:8000/invitations/${invitationID}/respond`, {
         method: "POST",
         headers: {
          'Authorization': `Bearer ${token}`,
@@ -318,4 +321,88 @@ export async function respondInvitation(
      if (!res.ok) {
         throw new Error("Failed to respond to the invitation")
      }
+}
+
+// Comment API functions
+export async function fetchComments(postId: number): Promise<Comment[]> {
+  const token = getStoredToken();
+  if (!token) {
+    throw new Error("No auth token found");
+  }
+
+  const res = await fetch(`http://localhost:8000/posts/${postId}/comments`, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch comments");
+  }
+
+  return res.json();
+}
+
+export async function createComment(postId: number, content: string): Promise<Comment> {
+  const token = getStoredToken();
+  if (!token) {
+    throw new Error("No auth token found");
+  }
+
+  const res = await fetch(`http://localhost:8000/posts/${postId}/comments`, {
+    method: "POST",
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ content }),
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Failed to create comment");
+  }
+
+  return res.json();
+}
+
+export async function deleteComment(commentId: number): Promise<void> {
+  const token = getStoredToken();
+  if (!token) {
+    throw new Error("No auth token found");
+  }
+
+  const res = await fetch(`http://localhost:8000/comments/${commentId}`, {
+    method: "DELETE",
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Failed to delete comment");
+  }
+}
+
+// Like API functions
+export async function toggleLike(postId: number): Promise<{message: string, liked: boolean}> {
+  const token = getStoredToken();
+  if (!token) {
+    throw new Error("No auth token found");
+  }
+
+  const res = await fetch(`http://localhost:8000/posts/${postId}/like`, {
+    method: "POST",
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Failed to toggle like");
+  }
+
+  return res.json();
 }

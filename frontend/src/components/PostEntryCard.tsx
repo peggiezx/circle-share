@@ -4,9 +4,12 @@ interface PostEntryCardProps {
   post: Post;
   type: "my-days" | "their-days";
   onPostSelect?: (post: Post) => void;
+  isSelected?: boolean;
+  onEditPost?: (post: Post) => void;
+  onDeletePost?: (postId: number) => void;
 }
 
-export default function PostEntryCard({post, type, onPostSelect}: PostEntryCardProps) {
+export default function PostEntryCard({post, type, onPostSelect, isSelected = false, onEditPost, onDeletePost}: PostEntryCardProps) {
     const formatTimestamp = (timeStamp: string) => {
       const date = new Date(timeStamp);
       const now = new Date();
@@ -32,15 +35,21 @@ export default function PostEntryCard({post, type, onPostSelect}: PostEntryCardP
     const isMyPost = type === "my-days"
     
     // Using inline styles to ensure colors show up
-    const cardBorderStyle = isMyPost ? "2px solid #93C5FD" : "1px solid #E5E7EB"
-    const avatarBgStyle = isMyPost ? "#3B82F6" : "#8B5CF6"
-
-
+    const cardBorderStyle = isSelected ? "2px solid #85D1DB" : "2px solid #B3EBF2"
+    const avatarBgStyle = "#B3EBF2"
+    const cardBgStyle = isSelected ? "#F0FDFF" : "white"
 
     return (
       <div
-        className="bg-white rounded-lg shadow-sm p-4 mb-4 cursor-pointer hover:shadow-md transition-shadow"
-        style={{ border: cardBorderStyle }}
+        className={`rounded-lg shadow-sm p-4 mb-4 cursor-pointer transition-all duration-200 ${
+          isSelected 
+            ? "shadow-lg ring-2 ring-[#85D1DB]/30" 
+            : "hover:shadow-md"
+        }`}
+        style={{ 
+          border: cardBorderStyle,
+          backgroundColor: cardBgStyle
+        }}
         onClick={() => onPostSelect?.(post)}
       >
         <div className="flex gap-4">
@@ -58,7 +67,7 @@ export default function PostEntryCard({post, type, onPostSelect}: PostEntryCardP
             {!isMyPost && (
               <div className="flex items-center gap-2 mb-2">
                 <div 
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-900 font-semibold text-sm"
                   style={{ backgroundColor: avatarBgStyle }}
                 >
                   {authorInitials}
@@ -73,7 +82,7 @@ export default function PostEntryCard({post, type, onPostSelect}: PostEntryCardP
             {isMyPost && (
               <div className="flex items-center gap-2 mb-2">
                 <div 
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-white font-semibold text-sm"
+                  className="w-8 h-8 rounded-full flex items-center justify-center text-gray-900 font-semibold text-sm"
                   style={{ backgroundColor: avatarBgStyle }}
                 >
                   {authorInitials}
@@ -87,9 +96,61 @@ export default function PostEntryCard({post, type, onPostSelect}: PostEntryCardP
             {/* Post Content */}
             <div className="text-gray-800 mb-2">{post.content}</div>
 
-            {/* Timestamp */}
-            <div className="text-sm text-gray-500">
-              Posted {formatTimestamp(post.created_at)}
+            {/* Photo Display */}
+            {post.photo_url && (
+              <div className="mb-3">
+                <img
+                  src={post.photo_url}
+                  alt="Post photo"
+                  className="w-full max-h-64 object-cover rounded-lg border border-gray-200 cursor-pointer hover:opacity-95 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent post selection when clicking photo
+                    // You could add a modal or lightbox here later
+                  }}
+                />
+              </div>
+            )}
+
+            {/* Timestamp and Actions */}
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                Posted {formatTimestamp(post.created_at)}
+              </div>
+              
+              {/* Edit and Delete icons - only for My Days */}
+              {isMyPost && (onEditPost || onDeletePost) && (
+                <div className="flex items-center gap-2">
+                  {onEditPost && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditPost(post);
+                      }}
+                      className="p-1 text-gray-400 hover:text-blue-500 transition-colors"
+                      title="Edit post"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                  )}
+                  
+                  {onDeletePost && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeletePost(post.post_id);
+                      }}
+                      className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                      title="Delete post"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

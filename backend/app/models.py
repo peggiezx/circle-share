@@ -47,10 +47,13 @@ class Post(Base):
     circle_id = Column(Integer, ForeignKey('circles.id'))
     author_id = Column(Integer, ForeignKey('users.id'))
     content = Column(String)
+    photo_url = Column(String, nullable=True)  # URL to the uploaded photo
     created_at = Column(DateTime, default=datetime.utcnow)
     
     author = relationship("User", back_populates="posts")
     circle = relationship("Circle", back_populates="posts")
+    comments = relationship("Comment", back_populates="post")
+    likes = relationship("Like", back_populates="post")
 
 
 class CircleInvitation(Base):
@@ -64,3 +67,28 @@ class CircleInvitation(Base):
     
     from_user = relationship("User", foreign_keys=[from_user_id])
     to_user = relationship("User", foreign_keys=[to_user_id])
+    
+    
+class Comment(Base):
+    __tablename__ = "comments"
+    
+    id = Column(Integer, primary_key=True)
+    post_id = Column(Integer, ForeignKey('posts.post_id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    content = Column(String, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    post = relationship("Post", back_populates="comments")
+    author = relationship("User")
+
+
+class Like(Base):
+    __tablename__ = "likes"
+    
+    id = Column(Integer, primary_key=True)
+    post_id = Column(Integer, ForeignKey('posts.post_id'), nullable=False)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    
+    post = relationship("Post", back_populates="likes")
+    user = relationship("User")

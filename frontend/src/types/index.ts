@@ -9,8 +9,11 @@ export interface Post {
   circle_id: number;
   author_id: number;
   content: string;
+  photo_url?: string;
   created_at: string;
   author_name: string;
+  like_count: number;
+  user_liked: boolean;
 }
 
 export interface Token {
@@ -44,4 +47,18 @@ export interface Invitation {
 
 export interface InvitationAction{
     action: string
+}
+
+// Comment types
+export interface Comment {
+    id: number;
+    post_id: number;
+    user_id: number;
+    content: string;
+    created_at: string;
+    author_name: string;
+}
+
+export interface CommentCreate {
+    content: string;
 }

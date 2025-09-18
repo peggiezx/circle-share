@@ -110,5 +110,34 @@ class PostResponse(BaseModel):
     circle_id: int
     author_id: int
     content: str
+    photo_url: str | None = None
     created_at: datetime
     author_name: str
+    like_count: int = 0
+    user_liked: bool = False
+
+# Comment related
+class CommentCreate(BaseModel):
+    content: str = Field(min_length=1, max_length=500)
+
+class CommentResponse(BaseModel):
+    id: int
+    post_id: int
+    user_id: int
+    content: str
+    created_at: datetime
+    author_name: str
+    
+    class Config:
+        from_attributes = True
+
+# Like related
+class LikeResponse(BaseModel):
+    id: int
+    post_id: int
+    user_id: int
+    created_at: datetime
+    user_name: str
+    
+    class Config:
+        from_attributes = True
